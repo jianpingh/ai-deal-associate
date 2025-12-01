@@ -2,10 +2,15 @@ from src.state import DealState
 from src.utils.config import Config
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
+from src.tools.rag_tools import search_documents
 
 # Initialize the LLM
 # Ensure Config is imported so .env is loaded
 llm = ChatOpenAI(model="gpt-4o", temperature=0)
+
+# Bind tools
+tools = [search_documents]
+llm_with_tools = llm.bind_tools(tools)
 
 def chatbot_node(state: DealState):
     """
@@ -19,7 +24,7 @@ def chatbot_node(state: DealState):
     messages = state["messages"]
     
     # Call LLM
-    response = llm.invoke(messages)
+    response = llm_with_tools.invoke(messages)
     
     return {"messages": [response]}
 

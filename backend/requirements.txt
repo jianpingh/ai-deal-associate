@@ -4,8 +4,9 @@ langchain-openai
 langchain-community
 python-dotenv
 openpyxl
+pandas
 python-pptx
 unstructured
-pinecone-client
+pinecone
 uvicorn
 fastapi
