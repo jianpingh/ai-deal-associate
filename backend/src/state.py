@@ -1,11 +1,12 @@
 from typing import TypedDict, Annotated, List, Dict, Any, Optional
 from langgraph.graph.message import add_messages
+from langchain_core.messages import BaseMessage
 
 class DealState(TypedDict):
     """
     State definition for the AI Deal Associate.
     """
-    messages: Annotated[List[Any], add_messages]
+    messages: Annotated[List[BaseMessage], add_messages]
     
     # Context data
     current_deal_id: Optional[str]

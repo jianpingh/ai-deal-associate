@@ -1,6 +1,7 @@
 {
     "title": "AI Deal Associate",
     "description": "An AI agent for deal processing.",
+    "dependencies": ["./requirements.txt"],
     "graphs": {
         "agent": "./src/agent.py:app"
     }
