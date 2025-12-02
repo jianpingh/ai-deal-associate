@@ -1,13 +1,23 @@
 from src.state import DealState
 
+def propose_comparables(state: DealState):
+    """
+    Step 3: Propose Comparables
+    Finds and scores comps from memory/database.
+    """
+    print("--- Node: Propose Comparables ---")
+    # Placeholder logic
+    return {"messages": ["Comparables proposed."], "comps_data": [{"name": "Comp A"}]}
+
+def update_comparables(state: DealState):
+    """
+    Step 5: Update Comparables
+    Recalculates blended market metrics based on user-curated comps.
+    """
+    print("--- Node: Update Comparables ---")
+    # Placeholder logic
+    return {"messages": ["Comparables updated."]}
+
 def comps_node(state: DealState):
-    """
-    Node for comparable companies analysis.
-    Corresponds to processes:
-    4. Competitor Analysis
-    5. Precedent Transactions
-    6. Market Research
-    """
-    print("--- Node: Comps ---")
-    # Logic to search and analyze comps
-    return {"messages": ["Comps analysis complete."]}
+    pass
+
