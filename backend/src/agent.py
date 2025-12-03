@@ -32,8 +32,8 @@ class Intent(BaseModel):
             "- 'ingest': Start deal, underwriting, upload documents (e.g., 'Start underwriting').\n"
             "- 'comps': Comparables, market research, competitors (e.g., 'Show comps', 'Remove Comp A').\n"
             "- 'assumptions': Financial assumptions, growth rates, caps (e.g., 'What are assumptions', 'Change growth to 3%').\n"
-            "- 'model': Build model, calculate IRR/valuation (e.g., 'Build model').\n"
-            "- 'deck': Generate presentation, memo, summary (e.g., 'Generate deck').\n"
+            "- 'model': Build model, calculate IRR/valuation, OR confirm model build (e.g., 'Build model', 'Yes' to build question).\n"
+            "- 'deck': Generate presentation, memo, summary, OR confirm deck generation (e.g., 'Generate deck', 'Yes' to deck question).\n"
             "- 'scenarios': Scenario analysis, sensitivity, stress test (e.g., 'Run downside case').\n"
             "- 'chat': General conversation, greetings, clarifications, or feedback not triggering a specific step."
         )
@@ -46,12 +46,14 @@ def intent_router_node(state: DealState):
     
     Determine if the user's message is a request to perform a specific workflow action (Workflow) or a general question/comment (Chat).
     
+    CRITICAL: Check the conversation history. If the system just asked a confirmation question (e.g., "Ready to build model?"), interpret "Yes" or "Proceed" as the corresponding action (e.g., 'model').
+    
     Workflow Actions:
     - ingest: Start new deal, upload documents, begin underwriting.
     - comps: View, propose, modify, or update comparables.
     - assumptions: View, propose, modify, or update financial assumptions.
-    - model: Build, rebuild, or calculate the financial model.
-    - deck: Generate, create, or update the presentation deck/memo.
+    - model: Build, rebuild, or calculate the financial model. Also use this if user confirms build.
+    - deck: Generate, create, or update the presentation deck/memo. Also use this if user confirms deck.
     - scenarios: Run scenario analysis, stress tests, or sensitivity analysis.
     
     Chat:
@@ -195,11 +197,11 @@ workflow.add_edge("human_review_assumptions", "update_assumptions")
 workflow.add_edge("update_assumptions", "human_confirm_model_build") # Flow into model prep
 
 # Model Flow
-workflow.add_edge("human_confirm_model_build", "build_model")
+workflow.add_edge("human_confirm_model_build", END) # Wait for user confirmation via Router
 workflow.add_edge("build_model", "human_confirm_deck_generation") # Flow into deck prep
 
 # Deck Flow
-workflow.add_edge("human_confirm_deck_generation", "generate_deck")
+workflow.add_edge("human_confirm_deck_generation", END) # Wait for user confirmation via Router
 workflow.add_edge("generate_deck", END)
 
 # Scenarios Flow
@@ -215,8 +217,8 @@ app = workflow.compile(
     interrupt_before=[
         "update_comparables",       # Step 5: Interrupt after human_review_comps
         "update_assumptions",       # Step 8: Interrupt after human_review_assumptions
-        "build_model",              # Step 10: Interrupt after human_confirm_model_build
-        "generate_deck",            # Step 12: Interrupt after human_confirm_deck_generation
+        # "build_model",            # Step 10: Removed interrupt, using Router confirmation
+        # "generate_deck",          # Step 12: Removed interrupt, using Router confirmation
         "apply_scenario",           # Step 15: Interrupt after wait_for_scenario_requests
         "wait_for_more_scenarios"   # Step 18: Loop interrupt
     ]
