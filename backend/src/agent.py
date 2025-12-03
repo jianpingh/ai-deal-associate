@@ -182,12 +182,12 @@ workflow.add_edge("chatbot", END)
 
 # Ingestion Flow
 workflow.add_edge("ingest_and_align", "compute_metrics_and_draft_summary")
-workflow.add_edge("compute_metrics_and_draft_summary", END)
+workflow.add_edge("compute_metrics_and_draft_summary", "propose_comparables") # Auto-transition to Comps
 
 # Comps Flow
 workflow.add_edge("propose_comparables", "human_review_comps")
 workflow.add_edge("human_review_comps", "update_comparables")
-workflow.add_edge("update_comparables", END)
+workflow.add_edge("update_comparables", "propose_assumptions") # Auto-transition to Assumptions
 
 # Assumptions Flow
 workflow.add_edge("propose_assumptions", "human_review_assumptions")
