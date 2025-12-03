@@ -1,6 +1,7 @@
 from typing import Literal
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
+from langchain_core.messages import SystemMessage
 from langgraph.graph import StateGraph, END
 from pydantic import BaseModel, Field
 
@@ -25,15 +26,46 @@ llm = ChatOpenAI(model="gpt-4o", temperature=0)
 # --- Intent Router ---------------------------------------------------------
 class Intent(BaseModel):
     action: Literal["ingest", "comps", "assumptions", "model", "deck", "scenarios", "chat"] = Field(
-        ..., description="The user's intent."
+        ..., 
+        description=(
+            "Classify the user's intent into a workflow action or general chat.\n"
+            "- 'ingest': Start deal, underwriting, upload documents (e.g., 'Start underwriting').\n"
+            "- 'comps': Comparables, market research, competitors (e.g., 'Show comps', 'Remove Comp A').\n"
+            "- 'assumptions': Financial assumptions, growth rates, caps (e.g., 'What are assumptions', 'Change growth to 3%').\n"
+            "- 'model': Build model, calculate IRR/valuation (e.g., 'Build model').\n"
+            "- 'deck': Generate presentation, memo, summary (e.g., 'Generate deck').\n"
+            "- 'scenarios': Scenario analysis, sensitivity, stress test (e.g., 'Run downside case').\n"
+            "- 'chat': General conversation, greetings, clarifications, or feedback not triggering a specific step."
+        )
     )
 
 def intent_router_node(state: DealState):
     print("--- Node: Intent Router ---")
-    messages = state["messages"]
+    
+    system_message = """You are an AI Deal Associate routing user requests.
+    
+    Determine if the user's message is a request to perform a specific workflow action (Workflow) or a general question/comment (Chat).
+    
+    Workflow Actions:
+    - ingest: Start new deal, upload documents, begin underwriting.
+    - comps: View, propose, modify, or update comparables.
+    - assumptions: View, propose, modify, or update financial assumptions.
+    - model: Build, rebuild, or calculate the financial model.
+    - deck: Generate, create, or update the presentation deck/memo.
+    - scenarios: Run scenario analysis, stress tests, or sensitivity analysis.
+    
+    Chat:
+    - General questions about the property or market.
+    - Clarifications that don't require changing the deal state.
+    - Greetings or off-topic.
+    """
+    
+    # Construct the prompt messages
+    prompt = [SystemMessage(content=system_message)] + state["messages"]
+    
     structured_llm = llm.with_structured_output(Intent)
     try:
-        intent = structured_llm.invoke(messages)
+        intent = structured_llm.invoke(prompt)
         return {"current_process_step": intent.action}
     except Exception as e:
         print(f"Intent routing failed: {e}")

@@ -85,7 +85,7 @@ The AI Deal Associate is designed to handle 18 key processes in the M&A deal lif
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.12+
 - Node.js 18+
 - Docker (optional)
 
