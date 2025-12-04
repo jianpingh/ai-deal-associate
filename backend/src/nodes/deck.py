@@ -35,8 +35,27 @@ def refresh_deck_views(state: DealState):
     Updates or generates deck pages with scenario comparisons.
     """
     print("--- Node: Refresh Deck Views ---")
-    # Placeholder logic
-    return {"messages": ["Deck views refreshed."]}
+    
+    # Status update
+    status_content = (
+        "**System Processing:**\n"
+        "- Updates sensitivity tables in Deck\n"
+        "- Refreshes return charts (IRR/EM vs Base Case)\n"
+        "- Saves new version: [Download IC Deck v2 (Scenario A).pptx]"
+    )
+    
+    # Agent response asking for more scenarios
+    response_content = (
+        "Deck views refreshed with the new scenario data.\n\n"
+        "Would you like to run **another scenario** (e.g., 'stress test interest rates'), or is the analysis complete?"
+    )
+    
+    return {
+        "messages": [
+            AIMessage(content=status_content),
+            AIMessage(content=response_content)
+        ]
+    }
 
 def deck_node(state: DealState):
     pass

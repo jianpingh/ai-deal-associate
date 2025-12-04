@@ -34,8 +34,8 @@ class Intent(BaseModel):
             "- 'assumptions': Financial assumptions, growth rates, caps (e.g., 'What are assumptions', 'Change growth to 3%').\n"
             "- 'model': Build model, calculate IRR/valuation, OR confirm model build (e.g., 'Build model', 'Yes' to build question).\n"
             "- 'deck': Generate presentation, memo, summary, OR confirm deck generation (e.g., 'Generate deck', 'Yes' to deck question).\n"
-            "- 'scenarios': Scenario analysis, sensitivity, stress test (e.g., 'Run downside case').\n"
-            "- 'chat': General conversation, greetings, clarifications, or feedback not triggering a specific step."
+            "- 'scenarios': Run scenario analysis, stress tests, or sensitivity analysis. MUST be an affirmative request to run a scenario.\n"
+            "- 'chat': General conversation, greetings, clarifications, feedback, OR declining a suggestion (e.g., 'No', 'I am done', 'Stop')."
         )
     )
 
@@ -46,7 +46,10 @@ def intent_router_node(state: DealState):
     
     Determine if the user's message is a request to perform a specific workflow action (Workflow) or a general question/comment (Chat).
     
-    CRITICAL: Check the conversation history. If the system just asked a confirmation question (e.g., "Ready to build model?"), interpret "Yes" or "Proceed" as the corresponding action (e.g., 'model').
+    CRITICAL: Check the conversation history. 
+    1. If the system just asked a confirmation question (e.g., "Ready to build model?"), interpret "Yes" or "Proceed" as the corresponding action.
+    2. If the user says "No", "I'm done", "Stop", "Analysis complete", or declines a suggestion, classify this as 'chat'. DO NOT classify it as 'scenarios' or any other workflow action.
+    3. If the system just said "Scenario analysis prepared", the user is expected to provide scenario details. Classify their input as 'scenarios'.
     
     Workflow Actions:
     - ingest: Start new deal, upload documents, begin underwriting.
@@ -60,6 +63,7 @@ def intent_router_node(state: DealState):
     - General questions about the property or market.
     - Clarifications that don't require changing the deal state.
     - Greetings or off-topic.
+    - Refusals or completion statements (e.g., "No thanks", "Done").
     """
     
     # Construct the prompt messages
@@ -120,7 +124,7 @@ def route_intent(state: DealState):
         "assumptions": "propose_assumptions",
         "model": "build_model",
         "deck": "generate_deck",
-        "scenarios": "prepare_scenario_analysis",
+        "scenarios": "apply_scenario", # Direct jump to apply_scenario if intent is scenarios
         "chat": "chatbot"
     }
     
@@ -176,6 +180,7 @@ workflow.add_conditional_edges(
         "build_model": "build_model",
         "generate_deck": "generate_deck",
         "prepare_scenario_analysis": "prepare_scenario_analysis",
+        "apply_scenario": "apply_scenario", # Added missing mapping
         "chatbot": "chatbot"
     }
 )
@@ -206,11 +211,11 @@ workflow.add_edge("generate_deck", END)
 
 # Scenarios Flow
 workflow.add_edge("prepare_scenario_analysis", "wait_for_scenario_requests")
-workflow.add_edge("wait_for_scenario_requests", "apply_scenario")
+workflow.add_edge("wait_for_scenario_requests", END) # Wait for user input via Router
 workflow.add_edge("apply_scenario", "rebuild_model_for_scenario")
 workflow.add_edge("rebuild_model_for_scenario", "refresh_deck_views")
-workflow.add_edge("refresh_deck_views", "wait_for_more_scenarios")
-workflow.add_edge("wait_for_more_scenarios", "prepare_scenario_analysis") # Loop
+workflow.add_edge("refresh_deck_views", END) # Wait for user input via Router (Loop or End)
+workflow.add_edge("wait_for_more_scenarios", "prepare_scenario_analysis") # Loop (This node might be redundant now)
 
 # --- Compile ---------------------------------------------------------------
 app = workflow.compile(
@@ -219,7 +224,7 @@ app = workflow.compile(
         "update_assumptions",       # Step 8: Interrupt after human_review_assumptions
         # "build_model",            # Step 10: Removed interrupt, using Router confirmation
         # "generate_deck",          # Step 12: Removed interrupt, using Router confirmation
-        "apply_scenario",           # Step 15: Interrupt after wait_for_scenario_requests
-        "wait_for_more_scenarios"   # Step 18: Loop interrupt
+        # "apply_scenario",         # Step 15: Removed interrupt, using Router confirmation
+        # "wait_for_more_scenarios" # Step 18: Removed interrupt, using Router confirmation
     ]
 )
