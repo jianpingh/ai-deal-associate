@@ -31,7 +31,7 @@ def apply_scenario(state: DealState):
         scenario_name = "Downside Case (-5% Rent)"
     
     status_content = (
-        f"**System Processing:**\n"
+        f"System Processing:\n"
         f"- Applying scenario: {scenario_name}\n"
         "- Adjusting market rent growth assumptions\n"
         "- Recalculating cash flows"
@@ -54,7 +54,7 @@ def rebuild_model_for_scenario(state: DealState):
     # Agent response
     response_content = (
         f"Model rebuilt for {scenario_name}.\n\n"
-        "**Scenario Impact:**\n"
+        "Scenario Impact:\n"
         "- Levered IRR: 16.2% (vs 18.5% Base)\n"
         "- Equity Multiple: 1.9x (vs 2.1x Base)\n"
         "- DSCR: 1.35x (Lowest point)"

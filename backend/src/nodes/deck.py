@@ -10,9 +10,9 @@ def generate_deck(state: DealState):
     
     # Status update simulating system actions
     status_content = (
-        "**System Processing:**\n"
+        "System Processing:\n"
         "- Generates PPTX one-pager and IC deck\n"
-        "- Sends link: [Download IC Deck v1.pptx]"
+        "- Sends link: Download IC Deck v1.pptx"
     )
     
     # Agent response
@@ -38,16 +38,16 @@ def refresh_deck_views(state: DealState):
     
     # Status update
     status_content = (
-        "**System Processing:**\n"
+        "System Processing:\n"
         "- Updates sensitivity tables in Deck\n"
         "- Refreshes return charts (IRR/EM vs Base Case)\n"
-        "- Saves new version: [Download IC Deck v2 (Scenario A).pptx]"
+        "- Saves new version: Download IC Deck v2 (Scenario A).pptx"
     )
     
     # Agent response asking for more scenarios
     response_content = (
         "Deck views refreshed with the new scenario data.\n\n"
-        "Would you like to run **another scenario** (e.g., 'stress test interest rates'), or is the analysis complete?"
+        "Would you like to run another scenario (e.g., 'stress test interest rates'), or is the analysis complete?"
     )
     
     return {

@@ -10,7 +10,7 @@ def ingest_and_align(state: DealState):
     
     # Status update simulating the system actions
     status_content = (
-        "**System Processing:**\n"
+        "System Processing:\n"
         "- Loads IM, rent roll, and other PDFs\n"
         "- Loads structured JSON (assets, leases, logistics specs)\n"
         "- Aligns PDFs with structured entities"
@@ -39,7 +39,7 @@ def compute_metrics_and_draft_summary(state: DealState):
     
     # Simulate computed metrics
     metrics_summary = (
-        "**Compute Metrics and Draft Summary:**\n"
+        "Compute Metrics and Draft Summary:\n"
         "- Total GLA: 250,000 sqft\n"
         "- Occupancy: 95%\n"
         "- WALT: 4.2 Years\n"

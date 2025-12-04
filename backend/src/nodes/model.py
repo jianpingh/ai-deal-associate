@@ -10,7 +10,7 @@ def build_model(state: DealState):
     
     # Status update simulating system actions
     status_content = (
-        "**System Processing:**\n"
+        "System Processing:\n"
         "- Calculates cash flows (10-year hold)\n"
         "- Computes returns (IRR, EM, YOC)\n"
         "- Runs sensitivity checks"
@@ -19,7 +19,7 @@ def build_model(state: DealState):
     # Agent response
     response_content = (
         "Financial model built successfully.\n\n"
-        "**Key Returns:**\n"
+        "Key Returns:\n"
         "- Levered IRR: 18.5%\n"
         "- Equity Multiple: 2.1x\n"
         "- Yield on Cost: 6.8%\n\n"

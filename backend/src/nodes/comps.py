@@ -12,11 +12,11 @@ def propose_comparables(state: DealState):
     response_content = (
         "I’ve identified 6 internal comparable logistics assets based on location, size, and specification.\n\n"
         "Recommended set (3):\n"
-        "• Comp A – 52k m², 4.5% yield, €82/m², 20 km away\n"
-        "• Comp B – 60k m², 4.7% yield, €85/m², 35 km away\n"
-        "• Comp C – 45k m², 4.4% yield, €87/m², 50 km away\n\n"
-        "Current blended market rent from these 3 comps: **€85/m²/year**.\n\n"
-        "Please **remove any comps you don’t like or add others**, and I’ll recompute the market rent."
+        "Comp A – 52k m², 4.5% yield, €82/m², 20 km away\n"
+        "Comp B – 60k m², 4.7% yield, €85/m², 35 km away\n"
+        "Comp C – 45k m², 4.4% yield, €87/m², 50 km away\n\n"
+        "Current blended market rent from these 3 comps: €85/m²/year.\n\n"
+        "Please remove any comps you don’t like or add others, and I’ll recompute the market rent."
     )
     
     # Mock data for state
