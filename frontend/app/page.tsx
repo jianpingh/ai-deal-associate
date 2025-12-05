@@ -2,19 +2,21 @@
 
 import { useState, useEffect, useRef } from "react";
 import { client } from "@/lib/client";
-import { Send, Bot, User, Loader2, PlusCircle } from "lucide-react";
+import { Send, Bot, User, Loader2, PlusCircle, Terminal } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
+  name?: string;
 }
 
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [systemStatus, setSystemStatus] = useState<string>("");
   const [threadId, setThreadId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -29,6 +31,7 @@ export default function Home() {
   const startNewChat = async () => {
     setThreadId(null);
     setMessages([]);
+    setSystemStatus("");
     setInput("");
   };
 
@@ -44,6 +47,7 @@ export default function Home() {
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
+    setSystemStatus("");
 
     try {
       let currentThreadId = threadId;
@@ -75,16 +79,80 @@ export default function Home() {
 
       for await (const chunk of stream) {
         if (chunk.event === "values" && chunk.data.messages) {
-          const lastMessage = chunk.data.messages[chunk.data.messages.length - 1];
-          if (lastMessage.type === "ai" || lastMessage.role === "assistant") {
-             assistantContent = lastMessage.content;
-             setMessages((prev) =>
-              prev.map((msg) =>
-                msg.id === assistantMessageId
-                  ? { ...msg, content: assistantContent }
-                  : msg
-              )
-            );
+          const msgs = chunk.data.messages;
+          // Process all new messages
+          // We need to handle the case where multiple messages come in one chunk
+          // Since we are in "values" mode, we get the full history.
+          // We need to find the messages that correspond to this run.
+          
+          // Simple approach: Look at the last few messages
+          // If we find a system_log that we haven't added, add it.
+          // If we find an agent message, update the placeholder.
+
+          // Better approach for this specific UI requirement:
+          // Just update the messages state to reflect the latest state from the server,
+          // but we need to map the server messages to our UI format.
+          
+          // Let's stick to the current pattern but handle system_log as a separate message type in the UI
+          
+          // Filter messages to only include those after the last user message
+          let lastUserIndex = -1;
+          for (let i = msgs.length - 1; i >= 0; i--) {
+            if (msgs[i].role === "user" || msgs[i].type === "human") {
+                lastUserIndex = i;
+                break;
+            }
+          }
+          
+          const relevantMessages = lastUserIndex !== -1 ? msgs.slice(lastUserIndex + 1) : [];
+
+          if (relevantMessages.length > 0) {
+            setMessages((prev) => {
+              let newMessages = [...prev];
+              
+              for (const msg of relevantMessages) {
+                if (msg.type === "ai" || msg.role === "assistant") {
+                  
+                  // 1. Handle System Log
+                  if (msg.name === "system_log") {
+                    // Check if already exists to prevent duplicates
+                    const exists = newMessages.some(m => m.content === msg.content && m.name === "system_log");
+                    if (!exists) {
+                      // Find placeholder index
+                      const placeholderIndex = newMessages.findIndex(m => m.id === assistantMessageId);
+                      if (placeholderIndex !== -1) {
+                          // Insert before placeholder
+                          newMessages.splice(placeholderIndex, 0, {
+                              id: "sys-" + Date.now() + Math.random(),
+                              role: "assistant",
+                              content: msg.content,
+                              name: "system_log"
+                          });
+                      } else {
+                          // Append if placeholder not found (fallback)
+                          newMessages.push({
+                              id: "sys-" + Date.now() + Math.random(),
+                              role: "assistant",
+                              content: msg.content,
+                              name: "system_log"
+                          });
+                      }
+                    }
+                  } 
+                  
+                  // 2. Handle Agent Response (Update Placeholder)
+                  else if (msg.name === "agent" || !msg.name) {
+                    assistantContent = msg.content; // Update local var just in case
+                    newMessages = newMessages.map(m => 
+                      m.id === assistantMessageId 
+                        ? { ...m, content: msg.content, name: "agent" }
+                        : m
+                    );
+                  }
+                }
+              }
+              return newMessages;
+            });
           }
         }
       }
@@ -150,6 +218,25 @@ export default function Home() {
             ) : (
               messages.map((msg) => {
                 if (msg.role === "assistant" && !msg.content) return null;
+                
+                // Special styling for system logs
+                if (msg.name === "system_log") {
+                    return (
+                        <div key={msg.id} className="flex justify-start gap-4 opacity-75">
+                            <div className="w-8 h-8 flex-shrink-0" /> {/* Spacer for alignment */}
+                            <div className="max-w-[80%] rounded-2xl px-6 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-400 text-sm">
+                                <div className="flex items-center gap-2 mb-1 text-xs font-semibold uppercase tracking-wider text-blue-400">
+                                    <Terminal className="w-3 h-3" />
+                                    System Log
+                                </div>
+                                <div className="prose prose-invert prose-sm max-w-none">
+                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
                 return (
                   <div
                     key={msg.id}
@@ -187,9 +274,11 @@ export default function Home() {
                  <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 bg-blue-600 rounded-full">
                       <Bot className="w-5 h-5 text-white" />
                     </div>
-                <div className="flex items-center px-6 py-4 bg-gray-800 border border-gray-700 rounded-2xl">
-                  <Loader2 className="w-5 h-5 mr-2 text-blue-400 animate-spin" />
-                  <span className="text-gray-400">Thinking...</span>
+                <div className="flex flex-col px-6 py-4 bg-gray-800 border border-gray-700 rounded-2xl">
+                  <div className="flex items-center">
+                    <Loader2 className="w-5 h-5 mr-2 text-blue-400 animate-spin" />
+                    <span className="text-gray-400">Thinking...</span>
+                  </div>
                 </div>
               </div>
             )}
