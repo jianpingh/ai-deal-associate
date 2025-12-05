@@ -108,50 +108,23 @@ export default function Home() {
 
           if (relevantMessages.length > 0) {
             setMessages((prev) => {
-              let newMessages = [...prev];
-              
-              for (const msg of relevantMessages) {
-                if (msg.type === "ai" || msg.role === "assistant") {
-                  
-                  // 1. Handle System Log
-                  if (msg.name === "system_log") {
-                    // Check if already exists to prevent duplicates
-                    const exists = newMessages.some(m => m.content === msg.content && m.name === "system_log");
-                    if (!exists) {
-                      // Find placeholder index
-                      const placeholderIndex = newMessages.findIndex(m => m.id === assistantMessageId);
-                      if (placeholderIndex !== -1) {
-                          // Insert before placeholder
-                          newMessages.splice(placeholderIndex, 0, {
-                              id: "sys-" + Date.now() + Math.random(),
-                              role: "assistant",
-                              content: msg.content,
-                              name: "system_log"
-                          });
-                      } else {
-                          // Append if placeholder not found (fallback)
-                          newMessages.push({
-                              id: "sys-" + Date.now() + Math.random(),
-                              role: "assistant",
-                              content: msg.content,
-                              name: "system_log"
-                          });
-                      }
-                    }
-                  } 
-                  
-                  // 2. Handle Agent Response (Update Placeholder)
-                  else if (msg.name === "agent" || !msg.name) {
-                    assistantContent = msg.content; // Update local var just in case
-                    newMessages = newMessages.map(m => 
-                      m.id === assistantMessageId 
-                        ? { ...m, content: msg.content, name: "agent" }
-                        : m
-                    );
-                  }
-                }
-              }
-              return newMessages;
+              // 1. Find where the current turn started (the user message we just added)
+              const userMsgIndex = prev.findIndex(m => m.id === userMessage.id);
+              if (userMsgIndex === -1) return prev;
+
+              // 2. Keep history up to and including the user message
+              // This effectively removes the "placeholder" and replaces it with actual server messages
+              const history = prev.slice(0, userMsgIndex + 1);
+
+              // 3. Map server messages to frontend format
+              const newFrontendMessages = relevantMessages.map((msg, index) => ({
+                id: `${userMessage.id}_response_${index}`, // Stable ID based on sequence
+                role: "assistant" as const,
+                content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+                name: msg.name || "agent"
+              }));
+
+              return [...history, ...newFrontendMessages];
             });
           }
         }
