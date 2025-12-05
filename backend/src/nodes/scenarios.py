@@ -7,7 +7,7 @@ def prepare_scenario_analysis(state: DealState):
     Handles logic branch for scenario analysis.
     """
     print("--- Node: Prepare Scenario Analysis ---")
-    return {"messages": [AIMessage(content="Ready for scenario analysis. Please specify a scenario (e.g., 'downside case with -5% rent').")]}
+    return {"messages": [AIMessage(content="Ready for scenario analysis. Please specify a scenario (e.g., 'downside case with -5% rent').", name="agent")]}
 
 def apply_scenario(state: DealState):
     """
@@ -38,7 +38,7 @@ def apply_scenario(state: DealState):
     )
     
     return {
-        "messages": [AIMessage(content=status_content)],
+        "messages": [AIMessage(content=status_content, name="system_log")],
         "current_scenario": scenario_name
     }
 
@@ -60,7 +60,7 @@ def rebuild_model_for_scenario(state: DealState):
         "- DSCR: 1.35x (Lowest point)"
     )
     
-    return {"messages": [AIMessage(content=response_content)]}
+    return {"messages": [AIMessage(content=response_content, name="agent")]}
 
 def wait_for_more_scenarios(state: DealState):
     """
@@ -68,7 +68,7 @@ def wait_for_more_scenarios(state: DealState):
     Loop point.
     """
     print("--- Node: Wait for More Scenarios ---")
-    return {"messages": ["Waiting for more scenarios..."]}
+    return {"messages": [AIMessage(content="Waiting for more scenarios...", name="agent")]}
 
 def scenarios_node(state: DealState):
     pass

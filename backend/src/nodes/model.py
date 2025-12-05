@@ -28,8 +28,8 @@ def build_model(state: DealState):
     
     return {
         "messages": [
-            AIMessage(content=status_content),
-            AIMessage(content=response_content)
+            AIMessage(content=status_content, name="system_log"),
+            AIMessage(content=response_content, name="agent")
         ],
         "financial_model": {"irr": 0.185, "em": 2.1, "status": "built"}
     }

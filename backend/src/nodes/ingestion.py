@@ -10,10 +10,9 @@ def ingest_and_align(state: DealState):
     
     # Status update simulating the system actions
     status_content = (
-        "System Processing:\n"
-        "- Loads IM, rent roll, and other PDFs\n"
-        "- Loads structured JSON (assets, leases, logistics specs)\n"
-        "- Aligns PDFs with structured entities"
+        "Loads IM, rent roll, and other PDFs\n"
+        "Loads structured JSON (assets, leases, logistics specs)\n"
+        "Aligns PDFs with structured entities"
     )
     
     # Agent response
@@ -24,8 +23,8 @@ def ingest_and_align(state: DealState):
     
     return {
         "messages": [
-            AIMessage(content=status_content),
-            AIMessage(content=response_content)
+            AIMessage(content=status_content, name="system_log"),
+            AIMessage(content=response_content, name="agent")
         ],
         "extracted_data": {"status": "done", "property_name": "Logistics Hub North"}
     }
@@ -46,7 +45,7 @@ def compute_metrics_and_draft_summary(state: DealState):
         "- In-Place Rent: $12.50 psf"
     )
     
-    return {"messages": [AIMessage(content=metrics_summary)]}
+    return {"messages": [AIMessage(content=metrics_summary, name="system_log")]}
 
 def ingestion_node(state: DealState):
     # Legacy

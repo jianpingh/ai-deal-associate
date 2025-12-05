@@ -24,19 +24,19 @@ def human_confirm_model_build(state: DealState):
     Step 9: Wait for Human (Build Model)
     """
     print("--- Node: Human Confirm Model Build ---")
-    return {"messages": [AIMessage(content="Assumptions updated. Ready to build the financial model?")]}
+    return {"messages": [AIMessage(content="Assumptions updated. Ready to build the financial model?", name="agent")]}
 
 def human_confirm_deck_generation(state: DealState):
     """
     Step 11: Wait for Human (Generate Deck)
     """
     print("--- Node: Human Confirm Deck Generation ---")
-    return {"messages": [AIMessage(content="Financial model built. Do you want to generate the presentation deck?")]}
+    return {"messages": [AIMessage(content="Financial model built. Do you want to generate the presentation deck?", name="agent")]}
 
 def wait_for_scenario_requests(state: DealState):
     """
     Step 14: Wait for Scenario Requests
     """
     print("--- Node: Wait for Scenario Requests ---")
-    return {"messages": [AIMessage(content="Ready for scenario analysis. Please specify a scenario (e.g., 'downside case with -5% rent').")]}
+    return {"messages": [AIMessage(content="Ready for scenario analysis. Please specify a scenario (e.g., 'downside case with -5% rent').", name="agent")]}
 

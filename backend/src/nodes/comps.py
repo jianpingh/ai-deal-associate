@@ -27,7 +27,7 @@ def propose_comparables(state: DealState):
     ]
     
     return {
-        "messages": [AIMessage(content=response_content)], 
+        "messages": [AIMessage(content=response_content, name="agent")], 
         "comps_data": comps_data
     }
 
@@ -38,7 +38,7 @@ def update_comparables(state: DealState):
     """
     print("--- Node: Update Comparables ---")
     # Placeholder logic
-    return {"messages": ["Comparables updated."]}
+    return {"messages": [AIMessage(content="Comparables updated.", name="agent")]}
 
 def comps_node(state: DealState):
     pass
