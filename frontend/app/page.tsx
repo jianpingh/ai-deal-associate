@@ -115,7 +115,7 @@ export default function Home() {
               const history = prev.slice(0, userMsgIndex + 1);
 
               // 3. Map server messages to frontend format
-              const newFrontendMessages = relevantMessages.map((msg, index) => ({
+              const newFrontendMessages = relevantMessages.map((msg: any, index: number) => ({
                 id: `${userMessage.id}_response_${index}`, // Stable ID based on sequence
                 role: "assistant" as const,
                 content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
