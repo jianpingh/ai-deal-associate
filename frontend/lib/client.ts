@@ -1,5 +1,5 @@
 import { Client } from "@langchain/langgraph-sdk";
 
 export const client = new Client({
-  apiUrl: "http://localhost:8083",
+  apiUrl: "http://localhost:8085",
 });

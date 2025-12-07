@@ -145,13 +145,13 @@ export default function Home() {
   };
 
   return (
-    <div className="flex h-screen font-sans text-gray-100 bg-gray-900">
+    <div className="flex h-screen font-sans text-gray-900 bg-white">
       {/* Sidebar */}
-      <div className="flex flex-col w-64 bg-gray-800 border-r border-gray-700">
-        <div className="p-4 border-b border-gray-700">
-          <h1 className="flex items-center gap-2 text-xl font-bold text-white">
-            <Bot className="w-6 h-6 text-blue-400" />
-            AI Deal Associate
+      <div className="flex flex-col w-64 bg-gray-50 border-r border-gray-200">
+        <div className="p-4 border-b border-gray-200">
+          <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
+            <Bot className="w-6 h-6 text-gray-900" />
+            GoCanopy – AI Deal Associate
           </h1>
         </div>
         <div className="p-4">
@@ -176,12 +176,12 @@ export default function Home() {
 
       {/* Main Chat Area */}
       <div className="flex flex-col flex-1">
-        <div className="flex-1 p-4 overflow-y-auto md:p-8">
+        <div className="flex-1 p-4 overflow-y-auto md:p-8 bg-white">
           <div className="max-w-3xl mx-auto space-y-6">
             {messages.length === 0 ? (
-              <div className="mt-20 text-center text-gray-400">
-                <Bot className="w-16 h-16 mx-auto mb-4 text-gray-600" />
-                <h2 className="mb-2 text-2xl font-bold text-white">
+              <div className="mt-20 text-center text-gray-500">
+                <Bot className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                <h2 className="mb-2 text-2xl font-bold text-gray-900">
                   How can I help you today?
                 </h2>
                 <p>
@@ -197,12 +197,12 @@ export default function Home() {
                     return (
                         <div key={msg.id} className="flex justify-start gap-4 opacity-75">
                             <div className="w-8 h-8 flex-shrink-0" /> {/* Spacer for alignment */}
-                            <div className="max-w-[80%] rounded-2xl px-6 py-3 bg-gray-800/50 border border-gray-700/50 text-gray-400 text-sm">
-                                <div className="flex items-center gap-2 mb-1 text-xs font-semibold uppercase tracking-wider text-blue-400">
+                            <div className="max-w-[80%] rounded-2xl px-6 py-3 bg-gray-50 border border-gray-200 text-gray-600 text-sm">
+                                <div className="flex items-center gap-2 mb-1 text-xs font-semibold uppercase tracking-wider text-blue-600">
                                     <Terminal className="w-3 h-3" />
                                     System Log
                                 </div>
-                                <div className="prose prose-invert prose-sm max-w-none">
+                                <div className="prose prose-sm max-w-none text-gray-700">
                                     <ReactMarkdown>{msg.content}</ReactMarkdown>
                                 </div>
                             </div>
@@ -226,15 +226,15 @@ export default function Home() {
                       className={`max-w-[80%] rounded-2xl px-6 py-4 ${
                         msg.role === "user"
                           ? "bg-blue-600 text-white"
-                          : "bg-gray-800 text-gray-100 border border-gray-700"
+                          : "bg-gray-50 text-gray-900 border border-gray-200"
                       }`}
                     >
-                      <div className="prose prose-invert max-w-none">
+                      <div className={`prose max-w-none ${msg.role === "user" ? "prose-invert" : ""}`}>
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       </div>
                     </div>
                     {msg.role === "user" && (
-                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 bg-gray-600 rounded-full">
+                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 bg-gray-400 rounded-full">
                         <User className="w-5 h-5 text-white" />
                       </div>
                     )}
@@ -247,10 +247,10 @@ export default function Home() {
                  <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 bg-blue-600 rounded-full">
                       <Bot className="w-5 h-5 text-white" />
                     </div>
-                <div className="flex flex-col px-6 py-4 bg-gray-800 border border-gray-700 rounded-2xl">
+                <div className="flex flex-col px-6 py-4 bg-gray-50 border border-gray-200 rounded-2xl">
                   <div className="flex items-center">
-                    <Loader2 className="w-5 h-5 mr-2 text-blue-400 animate-spin" />
-                    <span className="text-gray-400">Thinking...</span>
+                    <Loader2 className="w-5 h-5 mr-2 text-blue-600 animate-spin" />
+                    <span className="text-gray-600">Thinking...</span>
                   </div>
                 </div>
               </div>
@@ -260,7 +260,7 @@ export default function Home() {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 border-t border-gray-700 bg-gray-800/50 backdrop-blur-sm">
+        <div className="p-4 border-t border-gray-200 bg-gray-50">
           <div className="relative max-w-3xl mx-auto">
             <textarea
               value={input}
@@ -272,19 +272,19 @@ export default function Home() {
                 }
               }}
               placeholder="Type your message..."
-              className="w-full bg-gray-900 text-white rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-700 resize-none h-[52px] max-h-32 overflow-y-auto"
+              className="w-full bg-white text-gray-900 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-300 resize-none h-[52px] max-h-32 overflow-y-auto"
               rows={1}
             />
             <button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              className="absolute p-2 text-white transition-colors bg-blue-600 rounded-lg right-2 top-2 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed"
+              className="absolute p-2 text-white transition-colors bg-blue-600 rounded-lg right-2 top-2 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
             >
               <Send className="w-4 h-4" />
             </button>
           </div>
           <div className="mt-2 text-xs text-center text-gray-500">
-            AI Deal Associate can make mistakes. Consider checking important information.
+            GoCanopy – AI Deal Associate can make mistakes. Consider checking important information.
           </div>
         </div>
       </div>
