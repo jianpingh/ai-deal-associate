@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 from langchain_core.tools import tool
 from langchain_openai import OpenAIEmbeddings
 from pinecone import Pinecone
-from src.utils.config import Config
+from deal_agent.utils.config import Config
 
 @tool
 def search_documents(query: str, deal_id: str) -> str:

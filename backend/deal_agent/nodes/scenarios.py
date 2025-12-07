@@ -1,5 +1,5 @@
 from langchain_core.messages import AIMessage
-from src.state import DealState
+from deal_agent.state import DealState
 
 def prepare_scenario_analysis(state: DealState):
     """

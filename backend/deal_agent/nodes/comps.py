@@ -1,6 +1,6 @@
 from langchain_core.messages import AIMessage
-from src.state import DealState
-from src.tools.comps_financial_calcs import calculate_blended_rent
+from deal_agent.state import DealState
+from deal_agent.tools.comps_financial_calcs import calculate_blended_rent
 
 def propose_comparables(state: DealState):
     """

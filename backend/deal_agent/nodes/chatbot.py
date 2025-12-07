@@ -1,8 +1,8 @@
-from src.state import DealState
-from src.utils.config import Config
+from deal_agent.state import DealState
+from deal_agent.utils.config import Config
 from langchain_core.messages import AIMessage
 from langchain_openai import ChatOpenAI
-from src.tools.rag_tools import search_documents
+from deal_agent.tools.rag_tools import search_documents
 
 # Initialize the LLM
 # Ensure Config is imported so .env is loaded

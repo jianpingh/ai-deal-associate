@@ -1,6 +1,6 @@
 from langchain_core.messages import AIMessage
-from src.state import DealState
-from src.tools.assumptions_tools import process_assumption_updates
+from deal_agent.state import DealState
+from deal_agent.tools.assumptions_tools import process_assumption_updates
 
 def propose_assumptions(state: DealState):
     """

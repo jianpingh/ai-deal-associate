@@ -5,8 +5,8 @@ from langchain_core.messages import SystemMessage
 from langgraph.graph import StateGraph, END
 from pydantic import BaseModel, Field
 
-from src.state import DealState
-from src.nodes import (
+from deal_agent.state import DealState
+from deal_agent.nodes import (
     ingestion,
     comps,
     assumptions,

@@ -1,5 +1,5 @@
 from langchain_core.messages import AIMessage
-from src.state import DealState
+from deal_agent.state import DealState
 
 def generate_deck(state: DealState):
     """
