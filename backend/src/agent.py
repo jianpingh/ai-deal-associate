@@ -25,13 +25,15 @@ llm = ChatOpenAI(model="gpt-4o", temperature=0)
 
 # --- Intent Router ---------------------------------------------------------
 class Intent(BaseModel):
-    action: Literal["ingest", "comps", "assumptions", "model", "deck", "scenarios", "chat"] = Field(
+    action: Literal["ingest", "comps", "update_comps", "assumptions", "update_assumptions", "model", "deck", "scenarios", "chat"] = Field(
         ..., 
         description=(
             "Classify the user's intent into a workflow action or general chat.\n"
             "- 'ingest': Start deal, underwriting, upload documents (e.g., 'Start underwriting').\n"
-            "- 'comps': Comparables, market research, competitors (e.g., 'Show comps', 'Remove Comp A').\n"
-            "- 'assumptions': Financial assumptions, growth rates, caps (e.g., 'What are assumptions', 'Change growth to 3%').\n"
+            "- 'comps': Initial request to view/propose comparables (e.g., 'Show comps', 'Find comparables').\n"
+            "- 'update_comps': Modify existing comparables - add, remove, or change (e.g., 'Remove Comp A', 'Add Comp D', 'please remove Comp B').\n"
+            "- 'assumptions': Initial request to view/propose assumptions (e.g., 'What are assumptions').\n"
+            "- 'update_assumptions': Modify existing assumptions (e.g., 'Change growth to 3%', 'Update exit yield').\n"
             "- 'model': Build model, calculate IRR/valuation, OR confirm model build (e.g., 'Build model', 'Yes' to build question).\n"
             "- 'deck': Generate presentation, memo, summary, OR confirm deck generation (e.g., 'Generate deck', 'Yes' to deck question).\n"
             "- 'scenarios': Run scenario analysis, stress tests, or sensitivity analysis. MUST be an affirmative request to run a scenario.\n"
@@ -121,7 +123,9 @@ def route_intent(state: DealState):
     mapping = {
         "ingest": "ingest_and_align",
         "comps": "propose_comparables",
+        "update_comps": "update_comparables",
         "assumptions": "propose_assumptions",
+        "update_assumptions": "update_assumptions",
         "model": "build_model",
         "deck": "generate_deck",
         "scenarios": "apply_scenario", # Direct jump to apply_scenario if intent is scenarios
@@ -176,7 +180,9 @@ workflow.add_conditional_edges(
     {
         "ingest_and_align": "ingest_and_align",
         "propose_comparables": "propose_comparables",
+        "update_comparables": "update_comparables",
         "propose_assumptions": "propose_assumptions",
+        "update_assumptions": "update_assumptions",
         "build_model": "build_model",
         "generate_deck": "generate_deck",
         "prepare_scenario_analysis": "prepare_scenario_analysis",
@@ -193,12 +199,12 @@ workflow.add_edge("compute_metrics_and_draft_summary", "propose_comparables") # 
 
 # Comps Flow
 workflow.add_edge("propose_comparables", "human_review_comps")
-workflow.add_edge("human_review_comps", "update_comparables")
-workflow.add_edge("update_comparables", "propose_assumptions") # Auto-transition to Assumptions
+workflow.add_edge("human_review_comps", END) # Wait for user input
+workflow.add_edge("update_comparables", END) # Wait for user confirmation
 
 # Assumptions Flow
 workflow.add_edge("propose_assumptions", "human_review_assumptions")
-workflow.add_edge("human_review_assumptions", "update_assumptions")
+workflow.add_edge("human_review_assumptions", END) # Wait for user input
 workflow.add_edge("update_assumptions", "human_confirm_model_build") # Flow into model prep
 
 # Model Flow
@@ -220,8 +226,8 @@ workflow.add_edge("wait_for_more_scenarios", "prepare_scenario_analysis") # Loop
 # --- Compile ---------------------------------------------------------------
 app = workflow.compile(
     interrupt_before=[
-        "update_comparables",       # Step 5: Interrupt after human_review_comps
-        "update_assumptions",       # Step 8: Interrupt after human_review_assumptions
+        # "update_comparables",       # Step 5: Removed interrupt to allow router execution
+        # "update_assumptions",       # Step 8: Removed interrupt to allow router execution
         # "build_model",            # Step 10: Removed interrupt, using Router confirmation
         # "generate_deck",          # Step 12: Removed interrupt, using Router confirmation
         # "apply_scenario",         # Step 15: Removed interrupt, using Router confirmation

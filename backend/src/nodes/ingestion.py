@@ -24,7 +24,7 @@ def ingest_and_align(state: DealState):
     return {
         "messages": [
             AIMessage(content=status_content, name="system_log"),
-            AIMessage(content=response_content, name="agent")
+            AIMessage(content=response_content, name="system_log")
         ],
         "extracted_data": {"status": "done", "property_name": "Logistics Hub North"}
     }
@@ -45,7 +45,7 @@ def compute_metrics_and_draft_summary(state: DealState):
         "- In-Place Rent: $12.50 psf"
     )
     
-    return {"messages": [AIMessage(content=metrics_summary, name="system_log")]}
+    return {"messages": [AIMessage(content=metrics_summary, name="agent")]}
 
 def ingestion_node(state: DealState):
     # Legacy
