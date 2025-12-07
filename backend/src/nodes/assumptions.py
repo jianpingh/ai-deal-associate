@@ -51,7 +51,7 @@ def update_assumptions(state: DealState):
     """
     print("--- Node: Update Assumptions ---")
     # Placeholder logic
-    return {"messages": [AIMessage(content="Assumptions updated.", name="agent")]}
+    return {"messages": [AIMessage(content="Updating financial assumptions...", name="system_log")]}
 
 def assumptions_node(state: DealState):
     pass

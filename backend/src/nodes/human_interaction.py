@@ -24,7 +24,7 @@ def human_confirm_model_build(state: DealState):
     Step 9: Wait for Human (Build Model)
     """
     print("--- Node: Human Confirm Model Build ---")
-    return {"messages": [AIMessage(content="Assumptions updated. Ready to build the financial model?", name="agent")]}
+    return {"messages": [AIMessage(content="Assumptions updated. Build the Excel model with these assumptions?", name="agent")]}
 
 def human_confirm_deck_generation(state: DealState):
     """

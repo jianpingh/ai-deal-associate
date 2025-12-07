@@ -1,5 +1,6 @@
 from langchain_core.messages import AIMessage
 from src.state import DealState
+from src.tools.comps_financial_calcs import calculate_blended_rent
 
 def propose_comparables(state: DealState):
     """
@@ -109,10 +110,13 @@ def update_comparables(state: DealState):
             for c in updated_comps
         ])
         
+        # Calculate new blended rent
+        new_blended_rent = calculate_blended_rent(updated_comps)
+
         response_content = (
             f"I've updated the comparables set: {action_text}.\n\n"
             f"Updated comparables ({len(updated_comps)}):" + ("\n" + remaining_text if updated_comps else " None remaining.") + "\n\n"
-            "Recalculating blended market rent based on new set...\n\n"
+            f"Updated blended market rent: €{new_blended_rent}/m²/year.\n\n"
             "Would you like to proceed to financial assumptions?"
         )
         
