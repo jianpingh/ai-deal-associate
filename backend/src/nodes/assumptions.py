@@ -1,5 +1,6 @@
 from langchain_core.messages import AIMessage
 from src.state import DealState
+from src.tools.assumptions_tools import process_assumption_updates
 
 def propose_assumptions(state: DealState):
     """
@@ -50,8 +51,39 @@ def update_assumptions(state: DealState):
     Writes final user assumptions to DealState.assumptions.
     """
     print("--- Node: Update Assumptions ---")
-    # Placeholder logic
-    return {"messages": [AIMessage(content="Updating financial assumptions...", name="system_log")]}
+    
+    # Get current assumptions and last user message
+    current_assumptions = state.get("financial_assumptions", {})
+    last_user_msg = ""
+    for msg in reversed(state["messages"]):
+        if msg.type == "human" or getattr(msg, 'role', None) == "user":
+            if isinstance(msg.content, list):
+                last_user_msg = " ".join([
+                    item.get("text", "") for item in msg.content 
+                    if isinstance(item, dict) and item.get("type") == "text"
+                ])
+            else:
+                last_user_msg = str(msg.content)
+            break
+            
+    # Use tool to process updates
+    updated_assumptions = process_assumption_updates(current_assumptions, last_user_msg)
+    
+    # Generate log message
+    changes = []
+    for k, v in updated_assumptions.items():
+        if v != current_assumptions.get(k):
+            changes.append(f"{k}: {v}")
+            
+    if changes:
+        log_msg = f"Updated assumptions: {', '.join(changes)}"
+    else:
+        log_msg = "No specific assumption updates detected."
+
+    return {
+        "messages": [AIMessage(content=log_msg, name="system_log")],
+        "financial_assumptions": updated_assumptions
+    }
 
 def assumptions_node(state: DealState):
     pass

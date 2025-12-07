@@ -11,9 +11,8 @@ def build_model(state: DealState):
     # Status update simulating system actions
     status_content = (
         "System Processing:\n"
-        "- Calculates cash flows (10-year hold)\n"
-        "- Computes returns (IRR, EM, YOC)\n"
-        "- Runs sensitivity checks"
+        "- Fills named ranges in the Excel template\n"
+        "- Runs the model and computes IRR, equity multiple, YoC, etc."
     )
     
     # Agent response
