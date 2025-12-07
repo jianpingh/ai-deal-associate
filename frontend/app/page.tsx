@@ -282,7 +282,7 @@ export default function Home() {
             </button>
           </div>
           <div className="mt-2 text-xs text-center text-gray-500">
-            GoCanopy – AI Deal Associate can make mistakes. Consider checking important information.
+            GoCanopy – An AI-driven platform for managing and optimizing deals.
           </div>
         </div>
       </div>
