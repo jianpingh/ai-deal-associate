@@ -2,6 +2,9 @@
     "title": "AI Deal Associate",
     "description": "An AI agent for deal processing.",
     "dependencies": ["."],
+    "dockerfile_lines": [
+        "RUN apt-get update && apt-get install -y libmagic-dev poppler-utils tesseract-ocr"
+    ],
     "graphs": {
         "agent": "./src/agent.py:app"
     }
