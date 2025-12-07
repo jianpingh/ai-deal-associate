@@ -13,7 +13,7 @@ ai-deal-associate/
 │       ├── deploy-frontend.yml     # Auto deploy frontend to Vercel
 │       └── deploy-backend.yml      # Auto deploy backend to LangGraph Cloud
 ├── backend/                        # Backend (Python / LangGraph)
-│   ├── src/
+│   ├── deal_agent/
 │   │   ├── __init__.py
 │   │   ├── agent.py                # [Core] Graph Definition & Compilation
 │   │   ├── state.py                # [State] DealState Definition
@@ -25,13 +25,16 @@ ai-deal-associate/
 │   │   │   ├── model.py            # Financial Model Calculation
 │   │   │   ├── deck.py             # PPT Generation
 │   │   │   ├── scenarios.py        # Scenario Analysis
-│   │   │   └── chatbot.py          # General Chat & Intent Recognition
+│   │   │   ├── chatbot.py          # General Chat & Intent Recognition
+│   │   │   └── human_interaction.py # Human-in-the-loop Logic
 │   │   ├── tools/                  # [Tools] Underlying Capabilities
 │   │   │   ├── __init__.py
 │   │   │   ├── pdf_parser.py       # PDF Parsing (Unstructured/Azure)
 │   │   │   ├── rag_tools.py        # Vector Retrieval (Pinecone)
 │   │   │   ├── excel_engine.py     # Excel Operations (openpyxl)
-│   │   │   └── ppt_engine.py       # PPT Operations (python-pptx)
+│   │   │   ├── ppt_engine.py       # PPT Operations (python-pptx)
+│   │   │   ├── comps_financial_calcs.py # Financial Math
+│   │   │   └── assumptions_tools.py # Assumption Parsing
 │   │   └── utils/                  # [Common] Config & Logging
 │   │       ├── config.py
 │   │       └── logger.py
@@ -65,19 +68,32 @@ ai-deal-associate/
 └── README.md                       # Project Documentation
 ```
 
-## 18 Processes & Node Mapping
+## Workflow Nodes & Integration
 
-The AI Deal Associate is designed to handle 18 key processes in the M&A deal lifecycle. These processes are mapped to specific nodes in the LangGraph architecture.
+The AI Deal Associate is designed to handle key processes in the M&A deal lifecycle. These processes are mapped to specific nodes in the LangGraph architecture.
 
-| Node File | Node Name | Corresponding Processes | Description |
-|-----------|-----------|-------------------------|-------------|
-| `ingestion.py` | `ingestion` | 1. NDA Processing<br>2. CIM Ingestion<br>3. Financial Spreading (Historical) | Handles the intake of documents (PDFs, Excel) and extracts structured data. |
-| `comps.py` | `comps` | 4. Competitor Analysis<br>5. Precedent Transactions<br>6. Market Research | Searches for and analyzes comparable companies and transactions. |
-| `assumptions.py` | `assumptions` | 7. Revenue Projections<br>8. Cost Projections<br>9. Macro Assumptions | Generates financial assumptions based on historical data and market trends. |
-| `model.py` | `model` | 10. DCF Modeling<br>11. LBO Modeling<br>12. Valuation Summary | Performs complex financial calculations and model updates. |
-| `scenarios.py` | `scenarios` | 13. Sensitivity Analysis<br>14. Stress Testing | Runs various scenarios (Base, Bull, Bear) to test valuation resilience. |
-| `deck.py` | `deck` | 15. Teaser Generation<br>16. Investment Memo Drafting<br>17. Management Presentation | Generates PowerPoint slides and documents based on analysis. |
-| `chatbot.py` | `chatbot` | 18. Q&A / Due Diligence Support | Handles ad-hoc queries, buyer list generation, and general interaction. |
+| **Step** | **Node Name** (`node_name`) | **Description** | **Interrupt?** | **Next Step** |
+| :--- | :--- | :--- | :--- | :--- |
+| **Entry** | `intent_router` | **Core Routing Logic**: Analyzes user input using LLM to determine the intent (e.g., ingest, comps, model) and checks dependencies (e.g., cannot build model without assumptions). | No | *Dynamic* (Based on Intent) |
+| **Chat** | [`chatbot`](backend/deal_agent/nodes/chatbot.py) | Handles general conversation, greetings, or requests that don't trigger a workflow action. | **END** | (Wait for user) |
+| **Ingest** | [`ingest_and_align`](backend/deal_agent/nodes/ingestion.py) | **Step 1**: Parses uploaded documents (PDFs, Excel) and structured JSON data. Aligns unstructured data with deal entities. | No | `compute_metrics...` |
+| | `compute_metrics...` | **Step 2**: Computes preliminary metrics (GLA, WALT, Occupancy) from the ingested data and drafts a deal summary. | No | [`propose_comparables`](backend/deal_agent/nodes/comps.py) |
+| **Comps** | [`propose_comparables`](backend/deal_agent/nodes/comps.py) | **Step 3**: Searches the database for relevant comparable assets based on location, size, and type. Calculates initial blended market rent. | No | [`human_review_comps`](backend/deal_agent/nodes/human_interaction.py) |
+| | [`human_review_comps`](backend/deal_agent/nodes/human_interaction.py) | **Step 4**: Presents the proposed comparables to the user and waits for feedback. | **END** | (Wait for user) |
+| | [`update_comparables`](backend/deal_agent/nodes/comps.py) | **Step 5**: **Interactive Update**: Parses user requests (e.g., "Remove Comp A", "Add Comp D") to modify the comps list and recalculate market rent. | No | **END** |
+| **Assumptions** | [`propose_assumptions`](backend/deal_agent/nodes/assumptions.py) | **Step 6**: Drafts financial assumptions (ERV, Yield, Growth, Downtime) based on the finalized comps and tenancy schedule. | No | [`human_review_assumptions`](backend/deal_agent/nodes/human_interaction.py) |
+| | [`human_review_assumptions`](backend/deal_agent/nodes/human_interaction.py) | **Step 7**: Presents the proposed assumptions to the user and waits for feedback. | **END** | (Wait for user) |
+| | [`update_assumptions`](backend/deal_agent/nodes/assumptions.py) | **Step 8**: **Interactive Update**: Parses user requests (e.g., "Change growth to 3%") to update specific financial assumptions. | No | **END** |
+| **Model** | [`human_confirm_model_build`](backend/deal_agent/nodes/human_interaction.py) | **Step 9**: Asks the user for final confirmation before building the complex financial model. | **END** | (Wait for user) |
+| | [`build_model`](backend/deal_agent/nodes/model.py) | **Step 10**: **Core Calculation**: Fills the Excel template with data and assumptions. Calculates IRR, Equity Multiple, and Yield on Cost. | No | `human_confirm_deck...` |
+| **Deck** | `human_confirm_deck...` | **Step 11**: Asks the user for confirmation to generate the Investment Committee (IC) presentation deck. | **END** | (Wait for user) |
+| | [`generate_deck`](backend/deal_agent/nodes/deck.py) | **Step 12**: Generates a PowerPoint presentation (or Memo) summarizing the deal, market, valuation, and business plan. | **END** | (Wait for user) |
+| | [`refresh_deck_views`](backend/deal_agent/nodes/deck.py) | **Step 13**: Updates specific slides/charts in the deck after a scenario analysis run. | **END** | (Wait for user) |
+| **Scenarios** | [`prepare_scenario_analysis`](backend/deal_agent/nodes/scenarios.py) | **Step 14**: Initializes the scenario analysis environment. | No | `wait_for_scenario...` |
+| | `wait_for_scenario...` | **Step 15**: Prompts the user to define a scenario (e.g., "Run downside case with -5% rent"). | **END** | (Wait for user) |
+| | [`apply_scenario`](backend/deal_agent/nodes/scenarios.py) | **Step 16**: Parses the scenario parameters and applies them to the financial model. | No | `rebuild_model...` |
+| | `rebuild_model...` | **Step 17**: Re-runs the financial model with the new scenario parameters. | No | [`refresh_deck_views`](backend/deal_agent/nodes/deck.py) |
+| | [`wait_for_more_scenarios`](backend/deal_agent/nodes/scenarios.py) | **Step 18**: (Optional Loop) Asks if the user wants to run additional scenarios. | No | `prepare_scenario...` |
 
 *(Note: Processes like Company Profiling and Buyer List Generation are also handled via the Chatbot and RAG tools)*
 
