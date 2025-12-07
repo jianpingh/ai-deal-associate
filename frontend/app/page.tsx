@@ -62,8 +62,6 @@ export default function Home() {
         "agent",
         {
           input: { messages: [{ role: "user", content: userMessage.content }] },
-        },
-        {
           streamMode: "values",
         }
       );
