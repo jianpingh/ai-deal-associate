@@ -282,7 +282,7 @@ export default function Home() {
             </button>
           </div>
           <div className="mt-2 text-xs text-center text-gray-500">
-            GoCanopy – An AI-driven platform for managing and optimizing deals.
+            GoCanopy – AI-driven Real Estate platform for investment analysis.
           </div>
         </div>
       </div>
