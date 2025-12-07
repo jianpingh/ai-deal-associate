@@ -10,8 +10,7 @@ The project is organized into a backend service and a frontend application.
 ai-deal-associate/
 ├── .github/                        # CI/CD Configuration
 │   └── workflows/
-│       ├── deploy-frontend.yml     # Auto deploy frontend to Vercel
-│       └── deploy-backend.yml      # Auto deploy backend to LangGraph Cloud
+│       └── deploy-frontend.yml     # Auto deploy frontend to Vercel
 ├── backend/                        # Backend (Python / LangGraph)
 │   ├── deal_agent/
 │   │   ├── __init__.py
@@ -121,7 +120,7 @@ The AI Deal Associate is designed to handle key processes in the M&A deal lifecy
    Copy `.env.example` to `.env` (if available) or create `.env` with your API keys (OpenAI, Pinecone, LangSmith).
 4. Run the server:
    ```bash
-   uvicorn src.agent:app --reload
+   uvicorn deal_agent.agent:app --reload
    ```
 
 ### Frontend Setup
@@ -141,8 +140,8 @@ The AI Deal Associate is designed to handle key processes in the M&A deal lifecy
 
 ## Deployment
 
-- **Frontend**: Automatically deployed to Vercel via GitHub Actions.
-- **Backend**: Automatically deployed to LangGraph Cloud via GitHub Actions.
+- **Frontend**: Automatically deployed to Vercel when changes are pushed to the `main` branch.
+- **Backend**: Automatically deployed to LangGraph Cloud via GitHub integration.
 
 ## License
 

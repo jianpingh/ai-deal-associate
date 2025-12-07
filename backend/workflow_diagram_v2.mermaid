@@ -1,0 +1,54 @@
+graph TD
+    %% Styles
+    classDef start fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef router fill:#ff9,stroke:#333,stroke-width:2px;
+    classDef process fill:#e1f5fe,stroke:#0277bd,stroke-width:2px;
+    classDef human fill:#fff9c4,stroke:#fbc02d,stroke-width:2px,stroke-dasharray: 5 5;
+    classDef endNode fill:#f9f,stroke:#333,stroke-width:2px;
+
+    %% Nodes
+    Start([Start]) --> IntentRouter{Intent Router}
+    
+    %% Chat Branch
+    IntentRouter -- "Chat / General" --> Chatbot[Chatbot]
+    Chatbot --> End([End])
+
+    %% Ingestion Branch
+    IntentRouter -- "Ingest Deal" --> Ingest[Ingest & Align Data]
+    Ingest --> ComputeMetrics[Compute Metrics & Summary]
+    ComputeMetrics --> ProposeComps[Propose Comparables]
+
+    %% Comps Loop
+    ProposeComps --> ReviewComps{Human Review Comps}
+    ReviewComps -- "Approve" --> ProposeAssumptions[Propose Assumptions]
+    ReviewComps -- "Update/Change" --> UpdateComps[Update Comparables]
+    UpdateComps --> ReviewComps
+
+    %% Assumptions Loop
+    ProposeAssumptions --> ReviewAssumptions{Human Review Assumptions}
+    ReviewAssumptions -- "Approve" --> ConfirmModel{Confirm Model Build}
+    ReviewAssumptions -- "Update/Change" --> UpdateAssumptions[Update Assumptions]
+    UpdateAssumptions --> ReviewAssumptions
+
+    %% Model Build
+    ConfirmModel -- "Yes" --> BuildModel[Build Financial Model]
+    ConfirmModel -- "No" --> End
+
+    %% Deck Generation
+    BuildModel --> ConfirmDeck{Confirm Deck Gen}
+    ConfirmDeck -- "Yes" --> GenerateDeck[Generate Deck]
+    ConfirmDeck -- "No" --> End
+    GenerateDeck --> End
+
+    %% Scenarios Branch (Simplified)
+    IntentRouter -- "Scenario Analysis" --> PrepareScenarios[Prepare Scenarios]
+    PrepareScenarios --> WaitScenario{Wait for Request}
+    WaitScenario -- "Run Case" --> ApplyScenario[Apply Scenario]
+    ApplyScenario --> RebuildModel[Rebuild Model]
+    RebuildModel --> RefreshDeck[Refresh Deck Views]
+    RefreshDeck --> WaitScenario
+
+    %% Class Assignments
+    class Start,End,EndNode start;
+    class IntentRouter,ReviewComps,ReviewAssumptions,ConfirmModel,ConfirmDeck,WaitScenario human;
+    class Chatbot,Ingest,ComputeMetrics,ProposeComps,UpdateComps,ProposeAssumptions,UpdateAssumptions,BuildModel,GenerateDeck,PrepareScenarios,ApplyScenario,RebuildModel,RefreshDeck process;
