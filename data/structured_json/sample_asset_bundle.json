@@ -1,0 +1,91 @@
+{
+  "assets": [
+    {
+      "name": "DC1 Ingram Micro",
+      "asset_type": "Logistics",
+      "tenure": "Freehold",
+      "address": "DC1, Drayton Way, Apex Park NN11 8NF",
+      "city": "Daventry",
+      "country": "United Kingdom",
+      "currency": "GBP",
+      "geocoordinates": {
+        "type": "Point",
+        "coordinates": [
+          -1.1750761,
+          52.729613
+        ]
+      },
+      "image_url": "https://example.com/dc1.jpg",
+      "logistics_asset": {
+        "area_m2": 222221.0,
+        "eaves_height_m": 11.6,
+        "dock_doors": 12,
+        "level_access_doors": 8,
+        "parking_spaces_cars": 180
+      },
+      "leases": [
+        {
+          "tenant": {
+            "name": "Ingram Micro (UK) Limited",
+            "industry": "Technology Distributor"
+          },
+          "area_m2": 222221.0,
+          "rent_psm_pa": 5.5,
+          "lease_start": "2015-06-01",
+          "lease_end": "2020-05-31",
+          "next_indexation_date": "2020-05-31",
+          "comments": "Refurbished in 2015",
+          "excel_id": 1
+        },
+        {
+          "tenant": {
+            "name": "CNH Industrial N.V.",
+            "industry": "Agricultural & Construction Equipment"
+          },
+          "area_m2": 90998.0,
+          "rent_psm_pa": 4.5,
+          "lease_start": "2002-11-19",
+          "lease_end": "2021-10-22",
+          "comments": "Service yard usage",
+          "excel_id": 2
+        }
+      ],
+      "deals": [
+        {
+          "name": "Apex Park, Daventry",
+          "deal_broker": "DTRE",
+          "sourcefiles": [
+            {
+              "type": "IM",
+              "filename": "Prologis Apex Park Daventry - DTRE Mar '16.pdf",
+              "path": "brookfield/sourcefiles_auto/20250715_Apex Park, Daventry/IM.pdf",
+              "created_at": "2025-07-15T21:06:56.806027"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "comps": [
+    {
+      "name": "Lyon Distribution Park",
+      "distance_km": 430,
+      "asset_type": "Logistics",
+      "size_m2": 16000,
+      "yield": 0.047,
+      "rent_psm_pa": 83,
+      "acquisition_date": "2024-05-15",
+      "source": "internal://IM_2024_LyonCBRE.pdf#p12"
+    },
+    {
+      "name": "3rd Party Logistics – Arcese",
+      "distance_km": 120,
+      "asset_type": "Logistics",
+      "size_m2": 89139,
+      "rent_psm_pa": 6.366,
+      "acquisition_date": "2018-09-29",
+      "notes": "Base + enhanced yard area.",
+      "source": "internal://CNH_Industrial_sheet#row23"
+    }
+  ]
+}

@@ -1,5 +1,5 @@
 from langchain_core.tools import tool
-from unstructured.partition.pdf import partition_pdf
+from pdfminer.high_level import extract_text
 from typing import Any
 
 @tool
@@ -12,12 +12,8 @@ def parse_pdf_document(file_path: str) -> str:
         file_path: The absolute path to the PDF file.
     """
     try:
-        # Using unstructured to partition the PDF
-        # This extracts text elements. In a real scenario, you might want to chunk this.
-        elements = partition_pdf(filename=file_path)
-        
-        # Combine text for simple return
-        text_content = "\n\n".join([str(el) for el in elements])
+        # Using pdfminer.six directly to avoid unstructured dependency issues
+        text_content = extract_text(file_path)
         
         # Truncate if too long for a single tool output (optional safety)
         if len(text_content) > 10000:
