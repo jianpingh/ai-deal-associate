@@ -21,17 +21,17 @@ def propose_comparables(state: DealState):
     blended_rent = calculate_blended_rent(comps_data)
     
     # Format the list for display
-    comps_list_text = "\n".join([
-        f"{c['name']} – {c['size']}, {c['yield']} yield, €{c['rent']}/m², {c['dist']} away"
+    comps_list_text = "\n\n".join([
+        f"• {c['name']} – {c['size']}, {c['yield']} yield, €{c['rent']}/m², {c['dist']} away"
         for c in comps_data
     ])
     
     response_content = (
         f"I’ve identified {len(all_comps)} internal comparable logistics assets based on location, size, and specification.\n\n"
-        f"Recommended set ({len(comps_data)}):\n"
+        f"Recommended set ({len(comps_data)}):\n\n"
         f"{comps_list_text}\n\n"
-        f"Current blended market rent from these {len(comps_data)} comps: €{blended_rent}/m²/year.\n\n"
-        "Please remove any comps you don’t like or add others, and I’ll recompute the market rent."
+        f"Current blended market rent from these {len(comps_data)} comps: **€{blended_rent}/m²/year**.\n\n"
+        "Please **remove any comps you don’t like or add others**, and I’ll recompute the market rent."
     )
     
     return {
@@ -130,22 +130,23 @@ def update_comparables(state: DealState):
         if to_add:
             action_desc.append(f"Added {', '.join(to_add)}")
             
-        status_content = f"Updated Comps: {'; '.join(action_desc)}"
+        status_content = (
+            "- Updates comparable set\n"
+            "- Recomputes market rent benchmark (and optionally yield benchmark)"
+        )
         
         # Recalculate metrics
         new_blended_rent = calculate_blended_rent(updated_comps)
         
-        comps_list_text = "\n".join([
-            f"{c['name']} – {c['size']}, {c['yield']} yield, €{c['rent']}/m²"
-            for c in updated_comps
-        ])
+        # Get just the names for the summary
+        comp_names = [c['name'].replace("Comp ", "") for c in updated_comps]
+        comp_names_str = ",".join(comp_names)
         
         response_content = (
-            f"{status_content}\n\n"
-            f"**Updated Set ({len(updated_comps)}):**\n"
-            f"{comps_list_text}\n\n"
-            f"**New Blended Market Rent:** €{new_blended_rent}/m²/year.\n\n"
-            "Would you like to proceed to financial assumptions?"
+            f"Done\n\n"
+            f"Final comparable set ({len(updated_comps)}): {comp_names_str}\n\n"
+            f"Updated Blended Market Rent: **€{new_blended_rent}/m²/year**.\n\n"
+            "I’ll now propose assumptions that explicitly reflect the tenancy schedule and these comparables. Would you like to proceed to financial assumptions?"
         )
         
         return {
