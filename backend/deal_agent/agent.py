@@ -50,8 +50,9 @@ def intent_router_node(state: DealState):
     
     CRITICAL: Check the conversation history. 
     1. If the system just asked a confirmation question (e.g., "Ready to build model?"), interpret "Yes" or "Proceed" as the corresponding action.
-    2. If the user says "No", "I'm done", "Stop", "Analysis complete", or declines a suggestion, classify this as 'chat'. DO NOT classify it as 'scenarios' or any other workflow action.
-    3. If the system just said "Scenario analysis prepared", the user is expected to provide scenario details. Classify their input as 'scenarios'.
+    2. If the system just presented Comparables and asked to remove/add, and the user says "No need", "Go on", "Proceed", "Looks good", or "Next", classify this as 'assumptions' (the next step).
+    3. If the user says "No", "I'm done", "Stop", "Analysis complete", or declines a suggestion, classify this as 'chat'. DO NOT classify it as 'scenarios' or any other workflow action.
+    4. If the system just said "Scenario analysis prepared", the user is expected to provide scenario details. Classify their input as 'scenarios'.
     
     Workflow Actions:
     - ingest: Start new deal, upload documents, begin underwriting.
