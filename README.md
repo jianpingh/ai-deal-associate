@@ -32,7 +32,7 @@ ai-deal-associate/
 │   │   │   ├── rag_tools.py        # Vector Retrieval (Pinecone)
 │   │   │   ├── excel_engine.py     # Excel Operations (openpyxl)
 │   │   │   ├── ppt_engine.py       # PPT Operations (python-pptx)
-│   │   │   ├── comps_financial_calcs.py # Financial Math
+│   │   │   ├── comps_tools.py      # Market Comps & Financial Math
 │   │   │   └── assumptions_tools.py # Assumption Parsing
 │   │   └── utils/                  # [Common] Config & Logging
 │   │       ├── config.py

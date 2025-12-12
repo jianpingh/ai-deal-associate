@@ -1,6 +1,8 @@
-from langchain_core.messages import AIMessage
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_openai import ChatOpenAI
 from deal_agent.state import DealState
-from deal_agent.tools.comps_financial_calcs import calculate_blended_rent
+from deal_agent.tools.comps_tools import calculate_blended_rent, fetch_market_comparables
+import json
 
 def propose_comparables(state: DealState):
     """
@@ -9,23 +11,28 @@ def propose_comparables(state: DealState):
     """
     print("--- Node: Propose Comparables ---")
     
-    # Simulate finding comps
+    # Fetch comps from tool (simulating API)
+    all_comps = fetch_market_comparables()
+    
+    # Simple logic: take first 3 as proposal
+    comps_data = all_comps[:3]
+    
+    # Calculate blended rent for the proposed set
+    blended_rent = calculate_blended_rent(comps_data)
+    
+    # Format the list for display
+    comps_list_text = "\n".join([
+        f"{c['name']} – {c['size']}, {c['yield']} yield, €{c['rent']}/m², {c['dist']} away"
+        for c in comps_data
+    ])
+    
     response_content = (
-        "I’ve identified 6 internal comparable logistics assets based on location, size, and specification.\n\n"
-        "Recommended set (3):\n"
-        "Comp A – 52k m², 4.5% yield, €82/m², 20 km away\n"
-        "Comp B – 60k m², 4.7% yield, €85/m², 35 km away\n"
-        "Comp C – 45k m², 4.4% yield, €87/m², 50 km away\n\n"
-        "Current blended market rent from these 3 comps: €85/m²/year.\n\n"
+        f"I’ve identified {len(all_comps)} internal comparable logistics assets based on location, size, and specification.\n\n"
+        f"Recommended set ({len(comps_data)}):\n"
+        f"{comps_list_text}\n\n"
+        f"Current blended market rent from these {len(comps_data)} comps: €{blended_rent}/m²/year.\n\n"
         "Please remove any comps you don’t like or add others, and I’ll recompute the market rent."
     )
-    
-    # Mock data for state
-    comps_data = [
-        {"name": "Comp A", "size": "52k m2", "yield": "4.5%", "rent": "82", "dist": "20km"},
-        {"name": "Comp B", "size": "60k m2", "yield": "4.7%", "rent": "85", "dist": "35km"},
-        {"name": "Comp C", "size": "45k m2", "yield": "4.4%", "rent": "87", "dist": "50km"}
-    ]
     
     return {
         "messages": [AIMessage(content=response_content, name="agent")], 
@@ -39,17 +46,11 @@ def update_comparables(state: DealState):
     """
     print("--- Node: Update Comparables ---")
     
-    # Mock database of available comps (including ones not currently selected)
-    all_available_comps = [
-        {"name": "Comp A", "size": "52k m2", "yield": "4.5%", "rent": "82", "dist": "20km"},
-        {"name": "Comp B", "size": "60k m2", "yield": "4.7%", "rent": "85", "dist": "35km"},
-        {"name": "Comp C", "size": "45k m2", "yield": "4.4%", "rent": "87", "dist": "50km"},
-        {"name": "Comp D", "size": "75k m2", "yield": "4.8%", "rent": "80", "dist": "15km"}, # The XXL box
-        {"name": "Comp E", "size": "40k m2", "yield": "4.3%", "rent": "90", "dist": "60km"},
-    ]
-    
-    # Get current comps and last user message
+    # Fetch all available comps from tool to handle additions
+    all_available_comps = fetch_market_comparables()
     current_comps = state.get("comps_data", [])
+    
+    # Get last user message
     last_user_msg = ""
     for msg in reversed(state["messages"]):
         if msg.type == "human" or getattr(msg, 'role', None) == "user":
@@ -57,66 +58,93 @@ def update_comparables(state: DealState):
                 last_user_msg = " ".join([
                     item.get("text", "") for item in msg.content 
                     if isinstance(item, dict) and item.get("type") == "text"
-                ]).lower()
+                ])
             else:
-                last_user_msg = str(msg.content).lower()
+                last_user_msg = str(msg.content)
             break
+            
+    # --- Use LLM to understand intent ---
+    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    
+    available_names = [c["name"] for c in all_available_comps]
+    current_names = [c["name"] for c in current_comps]
+    
+    prompt = f"""
+    You are managing a list of Real Estate Comparables.
+    
+    Current List: {current_names}
+    Available Database: {available_names}
+    
+    User Request: "{last_user_msg}"
+    
+    Analyze the user's request and determine which comps to ADD or REMOVE.
+    Synonyms for REMOVE: delete, drop, exclude, get rid of, minus.
+    Synonyms for ADD: include, plus, insert.
+    
+    Return a JSON object with two lists: "to_add" and "to_remove".
+    Example: {{"to_add": ["Comp D"], "to_remove": ["Comp A"]}}
+    If no specific comp is mentioned or the request is unclear, return empty lists.
+    """
+    
+    try:
+        response = llm.invoke([HumanMessage(content=prompt)])
+        # Clean up response content to ensure it's valid JSON
+        content = response.content.strip()
+        if content.startswith("```json"):
+            content = content[7:-3]
+        elif content.startswith("```"):
+            content = content[3:-3]
+            
+        actions = json.loads(content)
+        to_add = actions.get("to_add", [])
+        to_remove = actions.get("to_remove", [])
+        
+    except Exception as e:
+        print(f"LLM parsing failed: {e}")
+        to_add = []
+        to_remove = []
+
+    # --- Execute Actions ---
+    updated_comps = list(current_comps) # Copy
     
     # 1. Handle Removals
-    updated_comps = []
-    removed_names = []
-    
-    for comp in current_comps:
-        comp_name = comp.get("name", "").lower()
-        # Check if user wants to remove this comp
-        if "remove" in last_user_msg and comp_name in last_user_msg:
-            removed_names.append(comp.get("name"))
-            continue  # Skip this comp (remove it)
-        updated_comps.append(comp)
+    if to_remove:
+        updated_comps = [c for c in updated_comps if c["name"] not in to_remove]
 
     # 2. Handle Additions
-    added_names = []
-    current_names = {c["name"] for c in updated_comps} # Names currently in the list (after removal)
-    
-    if "add" in last_user_msg:
-        for candidate in all_available_comps:
-            candidate_name = candidate.get("name", "")
-            # Check if user wants to add this candidate AND it's not already in the list
-            if candidate_name.lower() in last_user_msg and candidate_name not in current_names:
-                updated_comps.append(candidate)
-                added_names.append(candidate_name)
-                current_names.add(candidate_name) # Prevent duplicates if logic runs multiple times
+    if to_add:
+        current_names_set = {c["name"] for c in updated_comps}
+        for name in to_add:
+            if name not in current_names_set:
+                # Find the comp object in all_available_comps
+                candidate = next((c for c in all_available_comps if c["name"] == name), None)
+                if candidate:
+                    updated_comps.append(candidate)
+                    current_names_set.add(name)
 
     # Generate response
-    if removed_names or added_names:
-        actions = []
-        if removed_names:
-            actions.append(f"Removing {', '.join(removed_names)}")
-        if added_names:
-            actions.append(f"Adding {', '.join(added_names)}")
+    if to_remove or to_add:
+        action_desc = []
+        if to_remove:
+            action_desc.append(f"Removed {', '.join(to_remove)}")
+        if to_add:
+            action_desc.append(f"Added {', '.join(to_add)}")
             
-        action_text = "; ".join(actions)
+        status_content = f"Updated Comps: {'; '.join(action_desc)}"
         
-        # System log content
-        status_content = (
-            f"System Processing:\n"
-            f"- {action_text}\n"
-            f"- Recalculating blended market rent\n"
-            f"- Updating deal state"
-        )
-
-        remaining_text = "\n".join([
-            f"{c['name']} – {c['size']}, {c['yield']} yield, €{c['rent']}/m², {c['dist']} away"
+        # Recalculate metrics
+        new_blended_rent = calculate_blended_rent(updated_comps)
+        
+        comps_list_text = "\n".join([
+            f"{c['name']} – {c['size']}, {c['yield']} yield, €{c['rent']}/m²"
             for c in updated_comps
         ])
         
-        # Calculate new blended rent
-        new_blended_rent = calculate_blended_rent(updated_comps)
-
         response_content = (
-            f"I've updated the comparables set: {action_text}.\n\n"
-            f"Updated comparables ({len(updated_comps)}):" + ("\n" + remaining_text if updated_comps else " None remaining.") + "\n\n"
-            f"Updated blended market rent: €{new_blended_rent}/m²/year.\n\n"
+            f"{status_content}\n\n"
+            f"**Updated Set ({len(updated_comps)}):**\n"
+            f"{comps_list_text}\n\n"
+            f"**New Blended Market Rent:** €{new_blended_rent}/m²/year.\n\n"
             "Would you like to proceed to financial assumptions?"
         )
         
@@ -128,15 +156,11 @@ def update_comparables(state: DealState):
             "comps_data": updated_comps
         }
     else:
-        response_content = (
-            "I couldn't identify which comparable to remove or add. "
-            "Please specify the comp name (e.g., 'Remove Comp A' or 'Add Comp D')."
-        )
-    
-    return {
-        "messages": [AIMessage(content=response_content, name="agent")],
-        "comps_data": updated_comps
-    }
+        return {
+            "messages": [
+                AIMessage(content="I couldn't identify which comparable to remove or add. Please specify the comp name (e.g., 'Remove Comp A' or 'Add Comp D').", name="agent")
+            ]
+        }
 
 def comps_node(state: DealState):
     pass

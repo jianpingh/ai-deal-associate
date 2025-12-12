@@ -61,3 +61,17 @@ def process_assumption_updates(current_assumptions: dict, user_input: str) -> di
             updated["renewal_prob"] = val
 
     return updated
+
+def fetch_default_assumptions(asset_type: str = "Logistics") -> dict:
+    """
+    Simulates fetching default underwriting assumptions from an internal database or API.
+    """
+    # Mock data
+    return {
+        "growth": 0.03,
+        "erv": 82,
+        "exit_yield": 0.0475,
+        "discount_rate": 0.065,
+        "downtime": 9,
+        "renewal_prob": 0.65
+    }
