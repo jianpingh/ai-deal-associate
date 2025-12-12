@@ -121,7 +121,7 @@ def route_intent(state: DealState):
 
     # --- Routing Map ---
     mapping = {
-        "ingest": "ingest_and_align",
+        "ingest": "start_ingestion",
         "comps": "propose_comparables",
         "update_comps": "update_comparables",
         "assumptions": "propose_assumptions",
@@ -142,7 +142,10 @@ workflow.add_node("intent_router", intent_router_node)
 workflow.add_node("chatbot", chatbot.chatbot_node)
 
 # Ingestion
-workflow.add_node("ingest_and_align", ingestion.ingest_and_align)
+workflow.add_node("start_ingestion", ingestion.start_ingestion)
+workflow.add_node("load_json_data", ingestion.load_json_data)
+workflow.add_node("load_pdf_documents", ingestion.load_pdf_documents)
+workflow.add_node("align_with_llm", ingestion.align_with_llm)
 workflow.add_node("compute_metrics_and_draft_summary", ingestion.compute_metrics_and_draft_summary)
 
 # Comps
@@ -178,7 +181,7 @@ workflow.add_conditional_edges(
     "intent_router",
     route_intent,
     {
-        "ingest_and_align": "ingest_and_align",
+        "start_ingestion": "start_ingestion",
         "propose_comparables": "propose_comparables",
         "update_comparables": "update_comparables",
         "propose_assumptions": "propose_assumptions",
@@ -194,7 +197,10 @@ workflow.add_conditional_edges(
 workflow.add_edge("chatbot", END)
 
 # Ingestion Flow
-workflow.add_edge("ingest_and_align", "compute_metrics_and_draft_summary")
+workflow.add_edge("start_ingestion", "load_json_data")
+workflow.add_edge("load_json_data", "load_pdf_documents")
+workflow.add_edge("load_pdf_documents", "align_with_llm")
+workflow.add_edge("align_with_llm", "compute_metrics_and_draft_summary")
 workflow.add_edge("compute_metrics_and_draft_summary", "propose_comparables") # Auto-transition to Comps
 
 # Comps Flow
