@@ -1,5 +1,7 @@
 from langchain_core.messages import AIMessage
 from deal_agent.state import DealState
+from deal_agent.tools.excel_engine import fill_excel_named_ranges
+import os
 
 def build_model(state: DealState):
     """
@@ -8,10 +10,37 @@ def build_model(state: DealState):
     """
     print("--- Node: Build Model ---", flush=True)
     
+    # Prepare data for Excel
+    # Mapping state keys to named ranges
+    # We use safe defaults if keys are missing
+    assumptions = state.get("assumptions", {})
+    excel_inputs = {
+        "Market_Rent": assumptions.get("market_rent", 0),
+        "Exit_Yield": assumptions.get("exit_yield", 0),
+        "CPI_Growth": assumptions.get("cpi", 0.02),
+        # Add more mappings as needed
+    }
+    
+    # Define template path
+    # Use path relative to this file to ensure it works regardless of CWD
+    # .../backend/deal_agent/nodes/model.py -> .../ (root)
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
+    template_path = os.path.join(root_dir, "data", "templates", "financial_model_template.xlsx")
+    
+    print(f"DEBUG: Looking for template at: {template_path}")
+    
+    # Execute Excel update if template exists
+    if os.path.exists(template_path):
+        result = fill_excel_named_ranges(template_path, excel_inputs)
+        log_detail = f"(Result: {result})"
+    else:
+        log_detail = "(Skipped: Template not found)"
+    
     # Status update simulating system actions
     status_content = (
         "System Processing:\n"
-        "- Fills named ranges in the Excel template\n"
+        f"- Fills named ranges in the Excel template {log_detail}\n"
         "- Runs the model and computes IRR, equity multiple, YoC, etc."
     )
     

@@ -53,3 +53,44 @@ def update_financial_model(file_path: str, updates: Dict[str, Any]) -> str:
         return f"Successfully updated cells: {', '.join(updated_cells)}"
     except Exception as e:
         return f"Error updating financial model: {str(e)}"
+
+@tool
+def fill_excel_named_ranges(file_path: str, data: Dict[str, Any]) -> str:
+    """
+    Fill named ranges in an Excel file with provided values.
+    
+    Args:
+        file_path: The absolute path to the Excel file.
+        data: A dictionary where keys are named ranges and values are the values to write.
+    """
+    try:
+        wb = openpyxl.load_workbook(file_path)
+        updated_ranges = []
+        
+        for name, value in data.items():
+            if name in wb.defined_names:
+                dne = wb.defined_names[name]
+                
+                # destinations yields (sheet_title, coord)
+                try:
+                    dests = list(dne.destinations)
+                    for sheet_title, coord in dests:
+                        ws = wb[sheet_title]
+                        # Handle range coordinates like $A$1 or $A$1:$B$2
+                        # Remove $ signs for cleaner handling if needed, but openpyxl handles them usually
+                        if ':' in coord:
+                            # If it's a range, set the top-left cell
+                            top_left = coord.split(':')[0]
+                            ws[top_left] = value
+                        else:
+                            ws[coord] = value
+                    updated_ranges.append(f"{name}")
+                except Exception as name_err:
+                    return f"Could not resolve named range {name}: {str(name_err)}"
+            else:
+                return f"Named range '{name}' not found in workbook."
+        
+        wb.save(file_path)
+        return f"Successfully updated named ranges: {', '.join(updated_ranges)}"
+    except Exception as e:
+        return f"Error updating named ranges: {str(e)}"

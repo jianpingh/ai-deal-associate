@@ -146,7 +146,7 @@ def update_comparables(state: DealState):
             f"Done\n\n"
             f"Final comparable set ({len(updated_comps)}): {comp_names_str}\n\n"
             f"Updated Blended Market Rent: **€{new_blended_rent}/m²/year**.\n\n"
-            "I’ll now propose assumptions that explicitly reflect the tenancy schedule and these comparables. Would you like to proceed to financial assumptions?"
+            "Would you like to proceed to financial assumptions?"
         )
         
         return {
