@@ -23,16 +23,18 @@ def build_model(state: DealState):
     
     # Define template path
     # Use path relative to this file to ensure it works regardless of CWD
-    # .../backend/deal_agent/nodes/model.py -> .../ (root)
+    # model.py is in backend/deal_agent/nodes/
+    # Go up 2 levels: nodes -> deal_agent -> backend
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    root_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir))))
-    template_path = os.path.join(root_dir, "data", "templates", "financial_model_template.xlsx")
+    backend_dir = os.path.dirname(os.path.dirname(current_dir))
+    template_path = os.path.join(backend_dir, "data", "templates", "financial_model_template.xlsx")
     
     print(f"DEBUG: Looking for template at: {template_path}")
     
     # Execute Excel update if template exists
     if os.path.exists(template_path):
-        result = fill_excel_named_ranges(template_path, excel_inputs)
+        # fill_excel_named_ranges is a StructuredTool, so we must use .invoke()
+        result = fill_excel_named_ranges.invoke({"file_path": template_path, "data": excel_inputs})
         log_detail = f"(Result: {result})"
     else:
         log_detail = "(Skipped: Template not found)"

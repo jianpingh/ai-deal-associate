@@ -28,9 +28,22 @@ def load_json_data(state: DealState):
     
     base_dir = os.getcwd()
     if "backend" in base_dir:
-        data_root = os.path.join(base_dir, "..", "data")
+        # Already in backend or subdirectory
+        # If in backend/, data is in data/
+        # If in backend/deal_agent/, data is in ../data/
+        # Safest is to find 'backend' and construct path from there
+        # But assuming standard execution from root or backend:
+        if base_dir.endswith("backend"):
+             data_root = os.path.join(base_dir, "data")
+        else:
+             # Fallback or deeper nesting, try to find relative to file
+             current_file_dir = os.path.dirname(os.path.abspath(__file__))
+             # .../backend/deal_agent/nodes -> .../backend
+             backend_dir = os.path.dirname(os.path.dirname(current_file_dir))
+             data_root = os.path.join(backend_dir, "data")
     else:
-        data_root = os.path.join(base_dir, "data")
+        # In root, data is in backend/data
+        data_root = os.path.join(base_dir, "backend", "data")
         
     json_dir = os.path.join(data_root, "structured_json")
     structured_data = {}
@@ -64,9 +77,14 @@ def load_pdf_documents(state: DealState):
     
     base_dir = os.getcwd()
     if "backend" in base_dir:
-        data_root = os.path.join(base_dir, "..", "data")
+        if base_dir.endswith("backend"):
+             data_root = os.path.join(base_dir, "data")
+        else:
+             current_file_dir = os.path.dirname(os.path.abspath(__file__))
+             backend_dir = os.path.dirname(os.path.dirname(current_file_dir))
+             data_root = os.path.join(backend_dir, "data")
     else:
-        data_root = os.path.join(base_dir, "data")
+        data_root = os.path.join(base_dir, "backend", "data")
         
     pdf_dir = os.path.join(data_root, "raw_pdfs")
     pdf_texts = []
