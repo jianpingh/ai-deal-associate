@@ -12,3 +12,4 @@ pi-heif
 pinecone
 uvicorn
 fastapi
+boto3
