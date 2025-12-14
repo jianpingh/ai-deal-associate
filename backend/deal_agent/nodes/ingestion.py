@@ -205,15 +205,15 @@ def compute_metrics_and_draft_summary(state: DealState):
     {analysis_text}
 
     **Task:**
-    Compute or extract the following key metrics. If a value is not explicitly available, estimate it from the context or mark as "TBD".
+    Compute or extract the following key metrics. Keep it brief (bullet points).
 
     **Output Format:**
-    Compute Metrics and Draft Summary:
-    - Total GLA: [Value + Unit]
-    - Occupancy: [Value %]
-    - WALT: [Value Years]
-    - In-Place Rent: [Value / sqft or sqm]
-    - [Add any other relevant high-level metric found]
+    - Total GLA: [Value]
+    - Occupancy: [Value]
+    - WALT: [Value]
+    - In-Place Rent: [Value]
+    - Key Highlight 1: [Brief text]
+    - Key Highlight 2: [Brief text]
     """
 
     response = llm.invoke([HumanMessage(content=prompt)])
@@ -235,13 +235,24 @@ def compute_metrics_and_draft_summary(state: DealState):
         slide_layout = prs.slide_layouts[1]
         slide = prs.slides.add_slide(slide_layout)
         if slide.shapes.title:
-            slide.shapes.title.text = "Metrics Summary"
+            slide.shapes.title.text = "Executive Summary"
         
         # Add content to body
         if len(slide.placeholders) > 1:
             body_shape = slide.placeholders[1]
             tf = body_shape.text_frame
-            tf.text = content[:1000] # Truncate if too long for one slide, or handle better
+            tf.clear()
+            
+            # Add content as bullet points
+            lines = content.split('\n')
+            for line in lines:
+                line = line.strip()
+                if line:
+                    p = tf.add_paragraph()
+                    p.text = line
+                    if line.startswith('-') or line.startswith('•'):
+                        p.text = line.lstrip('-• ')
+                        p.level = 0
 
         # Save locally
         ppt_filename = "Deal_Summary.pptx"
@@ -259,7 +270,7 @@ def compute_metrics_and_draft_summary(state: DealState):
         s3_link = upload_to_s3_and_get_link(output_path)
         
         if s3_link:
-            ppt_link_msg = f"\n\n📥 **[Download Deal Summary (PPT)]({s3_link})**"
+            ppt_link_msg = f"\n\n\n📥 **[Download Deal Summary (PPT)]({s3_link})**"
         else:
             ppt_link_msg = f"\n\n(PPT generated locally at {output_path}, but S3 upload failed - check AWS credentials)"
             
