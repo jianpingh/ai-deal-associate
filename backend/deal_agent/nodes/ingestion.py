@@ -208,6 +208,7 @@ def compute_metrics_and_draft_summary(state: DealState):
     Compute or extract the following key metrics. Keep it brief (bullet points).
 
     **Output Format:**
+    Compute Metrics and Draft Summary:
     - Total GLA: [Value]
     - Occupancy: [Value]
     - WALT: [Value]

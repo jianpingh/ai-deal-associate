@@ -31,7 +31,7 @@ def human_confirm_deck_generation(state: DealState):
     Step 11: Wait for Human (Generate Deck)
     """
     print("--- Node: Human Confirm Deck Generation ---")
-    return {"messages": [AIMessage(content="Financial model built. Do you want to generate the presentation deck?", name="agent")]}
+    return {"messages": [AIMessage(content="Generate the IC deck with these assumptions and results?", name="agent")]}
 
 def wait_for_scenario_requests(state: DealState):
     """

@@ -200,9 +200,8 @@ def build_model(state: DealState):
 
     # Agent response
     response_content = (
-        "Financial model built successfully.\n\n"
-        "Key Returns (Estimated):\n"
-        f"- Levered IRR: {irr_display}\n"
+        "The Excel model is built. Key results:\n\n"
+        f"- 10-Year Leveraged IRR: {irr_display}\n"
         f"- Equity Multiple: {em_display}\n"
         f"- Yield on Cost: {yoc_display}\n\n"
         f"{download_link}\n\n"
