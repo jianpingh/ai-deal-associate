@@ -6,7 +6,7 @@ from deal_agent.tools.rag_tools import search_documents
 
 # Initialize the LLM
 # Ensure Config is imported so .env is loaded
-llm = ChatOpenAI(model="gpt-4o", temperature=0)
+llm = ChatOpenAI(model="gpt-5.2", temperature=0)
 
 # Bind tools
 tools = [search_documents]

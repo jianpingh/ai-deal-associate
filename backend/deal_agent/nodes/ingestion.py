@@ -135,7 +135,7 @@ def align_with_llm(state: DealState):
             ]
         }
 
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model="gpt-5.2", temperature=0)
 
     prompt = f"""
     You are an expert Real Estate Investment Analyst.
@@ -190,7 +190,7 @@ def compute_metrics_and_draft_summary(state: DealState):
         return {"messages": [AIMessage(content="No data available to compute metrics.", name="agent")]}
 
     # Use LLM to synthesize metrics from the ingested data
-    llm = ChatOpenAI(model="gpt-4o", temperature=0)
+    llm = ChatOpenAI(model="gpt-5.2", temperature=0)
 
     prompt = f"""
     You are a Real Estate Analyst. 

@@ -21,7 +21,7 @@ from deal_agent.nodes import (
 load_dotenv()
 
 # --- LLM Setup -------------------------------------------------------------
-llm = ChatOpenAI(model="gpt-4o", temperature=0)
+llm = ChatOpenAI(model="gpt-5.2", temperature=0)
 
 # --- Intent Router ---------------------------------------------------------
 class Intent(BaseModel):
