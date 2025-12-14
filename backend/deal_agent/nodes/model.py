@@ -11,13 +11,14 @@ def calculate_simple_metrics(assumptions: dict):
     Performs a simplified 10-year DCF calculation to estimate returns.
     """
     # Extract assumptions with defaults
-    market_rent = float(assumptions.get("market_rent", 85))
+    # Use 'or' to handle 0 or None values for critical drivers
+    market_rent = float(assumptions.get("market_rent") or 85)
     area = 10000 # Mock area if not in state
-    entry_yield = float(assumptions.get("entry_yield", 0.045))
-    exit_yield = float(assumptions.get("exit_yield", 0.0475))
-    rent_growth = float(assumptions.get("rent_growth", 0.03))
-    ltv = float(assumptions.get("ltv", 0.60))
-    interest_rate = float(assumptions.get("interest_rate", 0.04))
+    entry_yield = float(assumptions.get("entry_yield") or 0.045)
+    exit_yield = float(assumptions.get("exit_yield") or 0.0475)
+    rent_growth = float(assumptions.get("rent_growth") or 0.03)
+    ltv = float(assumptions.get("ltv") if assumptions.get("ltv") is not None else 0.60)
+    interest_rate = float(assumptions.get("interest_rate") or 0.04)
     
     # 1. Purchase Price
     initial_rent = market_rent * area
@@ -72,15 +73,28 @@ def build_model(state: DealState):
     assumptions = state.get("assumptions", {})
     
     # Use robust defaults matching calculate_simple_metrics
-    market_rent = float(assumptions.get("market_rent", 85))
-    exit_yield = float(assumptions.get("exit_yield", 0.0475))
-    rent_growth = float(assumptions.get("rent_growth", 0.03))
-    entry_yield = float(assumptions.get("entry_yield", 0.045))
-    ltv = float(assumptions.get("ltv", 0.60))
-    interest_rate = float(assumptions.get("interest_rate", 0.04))
+    # Use 'or' to handle 0 or None values for critical drivers
+    market_rent = float(assumptions.get("market_rent") or 85)
     
+    # Normalize percentages if they are > 1 (e.g. 4.5 instead of 0.045)
+    def normalize_percent(val, default):
+        v = float(val or default)
+        if v > 1.0: 
+            return v / 100.0
+        return v
+
+    exit_yield = normalize_percent(assumptions.get("exit_yield"), 0.0475)
+    rent_growth = normalize_percent(assumptions.get("rent_growth"), 0.03)
+    entry_yield = normalize_percent(assumptions.get("entry_yield"), 0.045)
+    ltv = normalize_percent(assumptions.get("ltv"), 0.60)
+    interest_rate = normalize_percent(assumptions.get("interest_rate"), 0.04)
+    
+    # Extract Area if available
+    area = float(assumptions.get("leasable_area") or assumptions.get("area") or 10000)
+
     excel_inputs = {
         "Market_Rent": market_rent,
+        "Area": area,
         "Exit_Yield": exit_yield,
         "Rent_Growth": rent_growth,
         "Entry_Yield": entry_yield,

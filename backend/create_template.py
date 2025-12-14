@@ -215,6 +215,10 @@ def create_underwriting_template():
     ws_cf.cell(row=19, column=2, value="=(SUM(C15:L15) + ABS(B15)) / ABS(B15)")
     ws_cf.cell(row=19, column=2).number_format = "0.00x"
 
+    ws_cf.cell(row=20, column=1, value="Yield on Cost")
+    ws_cf.cell(row=20, column=2, value="=C4 / (Purchase_Price + Capex)")
+    ws_cf.cell(row=20, column=2).number_format = percent_format
+
     ws_cf.column_dimensions['A'].width = 25
 
     # ==========================================
