@@ -13,3 +13,5 @@ pinecone
 uvicorn
 fastapi
 boto3
+numpy
+numpy-financial

@@ -25,7 +25,7 @@ def propose_assumptions(state: DealState):
     assumptions_data = fetch_default_assumptions()
     
     # 2. Use LLM to generate the detailed proposal
-    llm = ChatOpenAI(model="gpt-5.2", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o", temperature=0.2)
     
     prompt = f"""
     You are a Real Estate Investment Analyst.

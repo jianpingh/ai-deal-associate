@@ -64,7 +64,7 @@ def update_comparables(state: DealState):
             break
             
     # --- Use LLM to understand intent ---
-    llm = ChatOpenAI(model="gpt-5.2", temperature=0)
+    llm = ChatOpenAI(model="gpt-4o", temperature=0.2)
     
     available_names = [c["name"] for c in all_available_comps]
     current_names = [c["name"] for c in current_comps]
