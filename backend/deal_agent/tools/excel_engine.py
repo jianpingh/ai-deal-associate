@@ -94,3 +94,32 @@ def fill_excel_named_ranges(file_path: str, data: Dict[str, Any]) -> str:
         return f"Successfully updated named ranges: {', '.join(updated_ranges)}"
     except Exception as e:
         return f"Error updating named ranges: {str(e)}"
+
+@tool
+def write_list_to_excel(file_path: str, sheet_name: str, data: List[List[Any]], start_row: int = 2, start_col: int = 1) -> str:
+    """
+    Write a list of lists (table data) to a specific sheet in an Excel file.
+    Useful for writing rent rolls, comps lists, or schedules.
+    
+    Args:
+        file_path: Absolute path to the Excel file.
+        sheet_name: Name of the sheet to write to.
+        data: List of rows, where each row is a list of values.
+        start_row: Row number to start writing (1-based). Default is 2 (assuming header is row 1).
+        start_col: Column number to start writing (1-based). Default is 1 (Column A).
+    """
+    try:
+        wb = openpyxl.load_workbook(file_path)
+        if sheet_name not in wb.sheetnames:
+            return f"Sheet '{sheet_name}' not found."
+        
+        ws = wb[sheet_name]
+        
+        for r_idx, row_data in enumerate(data):
+            for c_idx, value in enumerate(row_data):
+                ws.cell(row=start_row + r_idx, column=start_col + c_idx, value=value)
+                
+        wb.save(file_path)
+        return f"Successfully wrote {len(data)} rows to sheet '{sheet_name}'."
+    except Exception as e:
+        return f"Error writing list to Excel: {str(e)}"
