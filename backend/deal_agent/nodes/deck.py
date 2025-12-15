@@ -126,25 +126,71 @@ def refresh_deck_views(state: DealState):
     """
     print("--- Node: Refresh Deck Views ---")
     
+    # Determine Scenario Version and Label
+    scenarios = state.get("scenarios", {}) or {}
+    count = len(scenarios)
+    
+    # Base is v1. First scenario is v2 (A), Second is v3 (B), etc.
+    version = 2 + count
+    label = chr(65 + (count % 26)) # A, B, C... (wrap around Z if needed, simplified)
+    scenario_name = f"Scenario {label}"
+    
+    # Create Scenario PPT
+    prs = Presentation()
+    slide_layout = prs.slide_layouts[0] # Title Slide
+    slide = prs.slides.add_slide(slide_layout)
+    if slide.shapes.title:
+        slide.shapes.title.text = f"Scenario Analysis: {scenario_name}"
+    if len(slide.placeholders) > 1:
+        slide.placeholders[1].text = "Comparison vs Base Case\n- IRR Impact\n- Equity Multiple Impact"
+
+    # Save locally
+    filename = f"IC_Deck_v{version}_{scenario_name.replace(' ', '_')}.pptx"
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    backend_dir = os.path.dirname(os.path.dirname(current_dir))
+    output_dir = os.path.join(backend_dir, "data", "generated")
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, filename)
+    
+    s3_link = None
+    try:
+        prs.save(output_path)
+        # Upload to S3
+        s3_link = upload_to_s3_and_get_link(output_path)
+    except Exception as e:
+        print(f"Error generating/uploading scenario deck: {e}")
+
+    download_msg = ""
+    if s3_link:
+        download_msg = f"\n\n📥 **[Download IC Deck v{version} ({scenario_name})]({s3_link})**"
+    else:
+        download_msg = f"\n\n(Deck generated locally at {output_path}, but S3 upload failed)"
+    
     # Status update
     status_content = (
         "System Processing:\n"
         "- Updates sensitivity tables in Deck\n"
         "- Refreshes return charts (IRR/EM vs Base Case)\n"
-        "- Saves new version: Download IC Deck v2 (Scenario A).pptx"
+        f"- Uploads to S3: {filename}"
     )
     
     # Agent response asking for more scenarios
     response_content = (
-        "Deck views refreshed with the new scenario data.\n\n"
+        "Deck views refreshed with the new scenario data."
+        f"{download_msg}\n\n"
         "Would you like to run another scenario (e.g., 'stress test interest rates'), or is the analysis complete?"
     )
     
+    # Update scenarios in state to track count
+    new_scenarios = scenarios.copy()
+    new_scenarios[scenario_name] = {"filename": filename}
+
     return {
         "messages": [
             AIMessage(content=status_content, name="system_log"),
             AIMessage(content=response_content, name="agent")
-        ]
+        ],
+        "scenarios": new_scenarios
     }
 
 def deck_node(state: DealState):
