@@ -89,6 +89,23 @@ def generate_deck(state: DealState):
     # Appendix Logic
     app_text = "Documents Reviewed:\n- Investment Memorandum.pdf\n- Rent Roll.xlsx\n- Technical DD Report.pdf"
 
+    # Safe extraction helper
+    def safe_format_percent(val):
+        if val is None:
+            return "N/A"
+        try:
+            return f"{float(val):.2%}"
+        except:
+            return "N/A"
+
+    def safe_format_float(val):
+        if val is None:
+            return "N/A"
+        try:
+            return f"{float(val):.2f}x"
+        except:
+            return "N/A"
+
     replacements = {
         "{{DEAL_NAME}}": state.get("company_name", "Project Deal") or "Project Deal",
         "{{DATE}}": datetime.now().strftime("%Y-%m-%d"),
@@ -100,8 +117,8 @@ def generate_deck(state: DealState):
         "{{SENSITIVITY_ANALYSIS}}": sens_text,
         "{{APPENDIX_BULLETS}}": app_text,
         "{{ENTRY_YIELD}}": f"{assumptions.get('entry_yield', 0):.2%}",
-        "{{IRR}}": f"{model.get('irr', 0):.2%}",
-        "{{MOIC}}": f"{model.get('equity_multiple', 0):.2f}x",
+        "{{IRR}}": safe_format_percent(model.get('irr')),
+        "{{MOIC}}": safe_format_float(model.get('equity_multiple')),
         "{{EXIT_YIELD}}": f"{assumptions.get('exit_yield', 0):.2%}",
         "{{MARKET_RENT}}": f"{assumptions.get('market_rent', 0)}",
     }
@@ -239,6 +256,23 @@ def refresh_deck_views(state: DealState):
     # Appendix Logic (Same as Base)
     app_text = "Documents Reviewed:\n- Investment Memorandum.pdf\n- Rent Roll.xlsx\n- Technical DD Report.pdf"
 
+    # Safe extraction helper
+    def safe_format_percent(val):
+        if val is None:
+            return "N/A"
+        try:
+            return f"{float(val):.2%}"
+        except:
+            return "N/A"
+
+    def safe_format_float(val):
+        if val is None:
+            return "N/A"
+        try:
+            return f"{float(val):.2f}x"
+        except:
+            return "N/A"
+
     replacements = {
         "{{DEAL_NAME}}": state.get("company_name", "Project Deal") or "Project Deal",
         "{{DATE}}": datetime.now().strftime("%Y-%m-%d"),
@@ -250,8 +284,8 @@ def refresh_deck_views(state: DealState):
         "{{SENSITIVITY_ANALYSIS}}": sens_text,
         "{{APPENDIX_BULLETS}}": app_text,
         "{{ENTRY_YIELD}}": f"{assumptions.get('entry_yield', 0):.2%}",
-        "{{IRR}}": f"{model.get('irr', 0):.2%}",
-        "{{MOIC}}": f"{model.get('equity_multiple', 0):.2f}x",
+        "{{IRR}}": safe_format_percent(model.get('irr')),
+        "{{MOIC}}": safe_format_float(model.get('equity_multiple')),
         "{{EXIT_YIELD}}": f"{assumptions.get('exit_yield', 0):.2%}",
         "{{MARKET_RENT}}": f"{assumptions.get('market_rent', 0)}",
     }

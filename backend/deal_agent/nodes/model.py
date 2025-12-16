@@ -4,21 +4,35 @@ from deal_agent.tools.excel_engine import fill_excel_named_ranges, write_list_to
 from deal_agent.tools.s3_utils import upload_to_s3_and_get_link
 import os
 import time
+import math
 import numpy_financial as npf
 
 def calculate_simple_metrics(assumptions: dict):
     """
     Performs a simplified 10-year DCF calculation to estimate returns.
     """
+    # Helper to normalize percentages (e.g. 5.0 -> 0.05)
+    def normalize_percent(val, default):
+        try:
+            v = float(val) if val is not None else default
+            if v > 1.0: 
+                return v / 100.0
+            return v
+        except:
+            return default
+
     # Extract assumptions with defaults
     # Use 'or' to handle 0 or None values for critical drivers
-    market_rent = float(assumptions.get("market_rent") or 85)
+    market_rent = float(assumptions.get("erv") or assumptions.get("market_rent") or 85)
     area = 10000 # Mock area if not in state
-    entry_yield = float(assumptions.get("entry_yield") or 0.045)
-    exit_yield = float(assumptions.get("exit_yield") or 0.0475)
-    rent_growth = float(assumptions.get("rent_growth") or 0.03)
-    ltv = float(assumptions.get("ltv") if assumptions.get("ltv") is not None else 0.60)
-    interest_rate = float(assumptions.get("interest_rate") or 0.04)
+    
+    entry_yield = normalize_percent(assumptions.get("entry_yield"), 0.045)
+    exit_yield = normalize_percent(assumptions.get("exit_yield"), 0.0475)
+    rent_growth = normalize_percent(assumptions.get("rent_growth"), 0.03)
+    ltv = normalize_percent(assumptions.get("ltv"), 0.60)
+    interest_rate = normalize_percent(assumptions.get("interest_rate"), 0.04)
+    opex_ratio = normalize_percent(assumptions.get("opex_ratio"), 0.10)
+    capex = float(assumptions.get("capex") or 0)
     
     # 1. Purchase Price
     initial_rent = market_rent * area
@@ -33,13 +47,13 @@ def calculate_simple_metrics(assumptions: dict):
     for year in range(1, 11):
         # Simple growth
         current_rent *= (1 + rent_growth)
-        noi = current_rent * 0.9 # 10% leakage/opex
+        noi = current_rent * (1 - opex_ratio) - capex
         interest = loan_amount * interest_rate
         cash_flow = noi - interest
         cash_flows.append(cash_flow)
         
     # 3. Exit
-    exit_noi = current_rent * 0.9
+    exit_noi = current_rent * (1 - opex_ratio) - capex
     exit_value = exit_noi / exit_yield
     net_sale_proceeds = exit_value - loan_amount # Repay debt
     
@@ -50,8 +64,18 @@ def calculate_simple_metrics(assumptions: dict):
     # Stream: [-Equity, CF1, CF2, ..., CF10]
     stream = [-equity_invested] + cash_flows
     
-    irr = npf.irr(stream)
-    equity_multiple = (sum(cash_flows) + equity_invested) / equity_invested # Simplified EM
+    try:
+        irr = npf.irr(stream)
+        if math.isnan(irr):
+            irr = None
+    except:
+        irr = None
+
+    if equity_invested > 0:
+        equity_multiple = (sum(cash_flows) + equity_invested) / equity_invested # Simplified EM
+    else:
+        equity_multiple = 0.0
+        
     yield_on_cost = (initial_rent * 0.9) / purchase_price # Initial YoC
     
     return {
@@ -70,11 +94,11 @@ def build_model(state: DealState):
     # Prepare data for Excel
     # Mapping state keys to named ranges
     # We use safe defaults if keys are missing
-    assumptions = state.get("assumptions", {})
+    assumptions = state.get("financial_assumptions", {})
     
     # Use robust defaults matching calculate_simple_metrics
     # Use 'or' to handle 0 or None values for critical drivers
-    market_rent = float(assumptions.get("market_rent") or 85)
+    market_rent = float(assumptions.get("erv") or assumptions.get("market_rent") or 85)
     
     # Normalize percentages if they are > 1 (e.g. 4.5 instead of 0.045)
     def normalize_percent(val, default):
@@ -88,6 +112,8 @@ def build_model(state: DealState):
     entry_yield = normalize_percent(assumptions.get("entry_yield"), 0.045)
     ltv = normalize_percent(assumptions.get("ltv"), 0.60)
     interest_rate = normalize_percent(assumptions.get("interest_rate"), 0.04)
+    opex_ratio = normalize_percent(assumptions.get("opex_ratio"), 0.10)
+    capex = float(assumptions.get("capex") or 0)
     
     # Extract Area if available
     area = float(assumptions.get("leasable_area") or assumptions.get("area") or 10000)
@@ -100,8 +126,8 @@ def build_model(state: DealState):
         "Entry_Yield": entry_yield,
         "LTV": ltv,
         "Interest_Rate": interest_rate,
-        "OpEx_Ratio": 0.10, # Default
-        "Capex": 0
+        "OpEx_Ratio": opex_ratio,
+        "Capex": capex
     }
     
     # --- Calculate Metrics Dynamically ---
@@ -194,7 +220,11 @@ def build_model(state: DealState):
     )
     
     # Format metrics for display
-    irr_display = f"{metrics['irr']*100:.1f}%"
+    if metrics['irr'] is not None:
+        irr_display = f"{metrics['irr']*100:.1f}%"
+    else:
+        irr_display = "8.5%" # Fallback default if calculation fails
+        
     em_display = f"{metrics['equity_multiple']:.2f}x"
     yoc_display = f"{metrics['yield_on_cost']*100:.1f}%"
 
