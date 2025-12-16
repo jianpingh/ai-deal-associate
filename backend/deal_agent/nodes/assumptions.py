@@ -42,29 +42,41 @@ def propose_assumptions(state: DealState):
     
     **Required Output Format:**
     
-    > Based on the curated comparables and the tenancy schedule, here are my proposed underwriting assumptions:
-    > 
-    > **Rent & ERV**
-    > • Current passing rent: [Extract from data or estimate] (weighted from the rent roll)
-    > • Blended market rent from comps: €{blended_rent}/m²/year
-    > • Proposed ERV: **[Value]** (Provide rationale, e.g., discount/premium to comps)
-    > 
-    > **Tenancy & Rollover** (from tenancy schedule)
-    > • Current occupancy: **[Value]%**
-    > • WAULT to expiry: **[Value] years**, [Mention any major rollover risks if found in analysis]
-    > • Single-tenant risk: **[Yes/No]**
-    > • Top 3 tenants represent **[Value]%** of total rent (Estimate if not exact)
-    > 
-    > **Reletting & Vacancy Assumptions**
-    > • Reletting downtime on expiries: **{assumptions_data.get('downtime', 9)} months** (aligned with historical vacancy)
-    > • Renewal probability: **{int(assumptions_data.get('renewal_prob', 0.65)*100)}%** for existing tenants
-    > 
-    > **Yields & Discount Rate**
-    > • Market evidence suggests yields between [Range]% from comps
-    > • Proposed exit yield: **{assumptions_data.get('exit_yield', 0.0475)*100}%**
-    > • Discount rate: **{assumptions_data.get('discount_rate', 0.065)*100}%**
-    > 
-    > Please **review and confirm or adjust** any of these assumptions before I build the model.
+    Based on the curated comparables and the tenancy schedule, here are my proposed underwriting assumptions:
+    
+    **Rent & ERV**
+    
+    • Current passing rent: [Extract from data or estimate] (weighted from the rent roll)
+    
+    • Blended market rent from comps: €{blended_rent}/m²/year
+    
+    • Proposed ERV: **[Value]** (Provide rationale, e.g., discount/premium to comps)
+    
+    **Tenancy & Rollover** (from tenancy schedule)
+    
+    • Current occupancy: **[Value]%**
+    
+    • WAULT to expiry: **[Value] years**, [Mention any major rollover risks if found in analysis]
+    
+    • Single-tenant risk: **[Yes/No]**
+    
+    • Top 3 tenants represent **[Value]%** of total rent (Estimate if not exact)
+    
+    **Reletting & Vacancy Assumptions**
+    
+    • Reletting downtime on expiries: **{assumptions_data.get('downtime', 9)} months** (aligned with historical vacancy)
+    
+    • Renewal probability: **{int(assumptions_data.get('renewal_prob', 0.65)*100)}%** for existing tenants
+    
+    **Yields & Discount Rate**
+    
+    • Market evidence suggests yields between [Range]% from comps
+    
+    • Proposed exit yield: **{assumptions_data.get('exit_yield', 0.0475)*100}%**
+    
+    • Discount rate: **{assumptions_data.get('discount_rate', 0.065)*100}%**
+    
+    Please **review and confirm or adjust** any of these assumptions before I build the model.
     """
     
     response = llm.invoke([HumanMessage(content=prompt)])
