@@ -227,7 +227,8 @@ def compute_metrics_and_draft_summary(state: DealState):
         # Paths
         current_dir = os.path.dirname(os.path.abspath(__file__))
         backend_dir = os.path.dirname(os.path.dirname(current_dir))
-        template_path = os.path.join(backend_dir, "data", "templates", "deck_template.pptx")
+        # Use the specific Deal Summary template
+        template_path = os.path.join(backend_dir, "data", "templates", "deal_summary_template.pptx")
         output_dir = os.path.join(backend_dir, "data", "generated")
         os.makedirs(output_dir, exist_ok=True)
 
@@ -259,6 +260,7 @@ def compute_metrics_and_draft_summary(state: DealState):
             "{{DEAL_NAME}}": state.get("company_name", "Project Deal") or "Project Deal",
             "{{DATE}}": datetime.now().strftime("%Y-%m-%d"),
             "{{SUMMARY_BULLETS}}": content,
+            # Deal Summary might not have these yet, but we keep them for safety
             "{{MARKET_BULLETS}}": "Pending Market Analysis...",
             "{{ENTRY_YIELD}}": "TBD",
             "{{IRR}}": "TBD",
