@@ -19,6 +19,15 @@ def upload_to_s3_and_get_link(file_path: str, object_name: str = None, expiratio
     aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
     aws_secret_key = os.getenv("AWS_SECRET_ACCESS_KEY")
     bucket_name = os.getenv("AWS_BUCKET_NAME")
+
+    # DEBUG: Check if credentials are loaded (Do not print full keys in production logs)
+    print(f"DEBUG: AWS_ACCESS_KEY_ID is {'Set' if aws_access_key else 'Not Set'}")
+    print(f"DEBUG: AWS_BUCKET_NAME is {bucket_name}")
+
+    if not aws_access_key or not aws_secret_key or not bucket_name:
+        print("Error: AWS credentials or bucket name not set in environment variables.")
+        return None
+    bucket_name = os.getenv("AWS_BUCKET_NAME")
     region_name = os.getenv("AWS_REGION", "us-east-1")
 
     if not all([aws_access_key, aws_secret_key, bucket_name]):
