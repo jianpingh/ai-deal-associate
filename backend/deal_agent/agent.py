@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 from langchain_core.messages import SystemMessage
 from langgraph.graph import StateGraph, END
+from langgraph.prebuilt import ToolNode, tools_condition
 from pydantic import BaseModel, Field
 
 from deal_agent.state import DealState
@@ -16,6 +17,7 @@ from deal_agent.nodes import (
     chatbot,
     human_interaction
 )
+from deal_agent.tools.rag_tools import search_documents
 
 # Load environment variables
 load_dotenv()
@@ -142,6 +144,10 @@ workflow = StateGraph(DealState)
 workflow.add_node("intent_router", intent_router_node)
 workflow.add_node("chatbot", chatbot.chatbot_node)
 
+# Tools Node (for RAG and other tool-use)
+tools = [search_documents]
+workflow.add_node("tools", ToolNode(tools))
+
 # Ingestion
 workflow.add_node("start_ingestion", ingestion.start_ingestion)
 workflow.add_node("load_json_data", ingestion.load_json_data)
@@ -195,7 +201,12 @@ workflow.add_conditional_edges(
     }
 )
 
-workflow.add_edge("chatbot", END)
+# Chatbot Flow (with Tools)
+workflow.add_conditional_edges(
+    "chatbot",
+    tools_condition,
+)
+workflow.add_edge("tools", "chatbot")
 
 # Ingestion Flow
 workflow.add_edge("start_ingestion", "load_json_data")

@@ -170,8 +170,7 @@ def refresh_deck_views(state: DealState):
     status_content = (
         "System Processing:\n"
         "- Updates sensitivity tables in Deck\n"
-        "- Refreshes return charts (IRR/EM vs Base Case)\n"
-        f"- Uploads to S3: {filename}"
+        "- Refreshes return charts (IRR/EM vs Base Case)"
     )
     
     # Agent response asking for more scenarios
