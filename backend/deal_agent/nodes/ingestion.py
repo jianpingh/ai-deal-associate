@@ -5,6 +5,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 from deal_agent.state import DealState
 from deal_agent.tools.pdf_parser import parse_pdf_document
+from deal_agent.tools.vector_store import ingest_deal_assets
 from pptx import Presentation
 from deal_agent.tools.s3_utils import upload_to_s3_and_get_link
 
@@ -56,12 +57,80 @@ def load_json_data(state: DealState):
         json_files = [f for f in os.listdir(json_dir) if f.endswith('.json')]
         if json_files:
             try:
-                with open(os.path.join(json_dir, json_files[0]), 'r', encoding='utf-8') as f:
+                file_path = os.path.join(json_dir, json_files[0])
+                with open(file_path, 'r', encoding='utf-8') as f:
                     structured_data = json.load(f)
+                
+                print(f"Vectorizing JSON data from {json_files[0]}...")
+                deal_id = state.get("current_deal_id", "unknown_deal")
+                
+                # --- 1. Process Assets (Internal) -> Namespace: deal ---
+                assets = structured_data.get("assets", [])
+                asset_texts = []
+                asset_metadatas = []
+                
+                for idx, asset in enumerate(assets):
+                    # Extract nested fields
+                    logistics = asset.get("logistics_asset", {})
+                    leases = asset.get("leases", [])
+                    tenant_names = [l.get("tenant", {}).get("name", "Unknown") for l in leases]
+                    
+                    text_blob = f"""
+                    Asset Name: {asset.get('name', 'Unknown')}
+                    Type: {asset.get('asset_type', 'Logistics')} ({asset.get('tenure', '')})
+                    Location: {asset.get('address', '')}, {asset.get('city', '')}, {asset.get('country', '')}
+                    Size: {logistics.get('area_m2', 0)} sqm
+                    Specs: {logistics.get('eaves_height_m', 0)}m height, {logistics.get('dock_doors', 0)} docks
+                    Tenants: {', '.join(tenant_names)}
+                    """
+                    asset_texts.append(text_blob.strip())
+                    asset_metadatas.append({
+                        "source": json_files[0],
+                        "deal_id": deal_id,
+                        "record_type": "internal_asset",
+                        "chunk_index": idx,
+                        "city": asset.get('city', 'Unknown'),
+                        "asset_name": asset.get('name', 'Unknown')
+                    })
+
+                if asset_texts:
+                    # Ingest into "deal" Namespace (Private Context)
+                    print(f"Ingesting {len(asset_texts)} assets into 'deal' namespace...")
+                    ingest_deal_assets(asset_texts, asset_metadatas, namespace="deal")
+                
+                # --- 2. Process Comps (Market) -> Namespace: market_comps ---
+                comps = structured_data.get("comps", [])
+                comp_texts = []
+                comp_metadatas = []
+                
+                for idx, comp in enumerate(comps):
+                    text_blob = f"""
+                    Comparable Asset: {comp.get('name', 'Unknown')}
+                    Type: {comp.get('asset_type', 'Logistics')}
+                    Size: {comp.get('size_m2', 0)} sqm
+                    Rent: {comp.get('rent_psm_pa', 0)} /sqm
+                    Yield: {comp.get('yield', 'N/A')}
+                    Date: {comp.get('acquisition_date', '')}
+                    Notes: {comp.get('notes', '')}
+                    """
+                    comp_texts.append(text_blob.strip())
+                    comp_metadatas.append({
+                        "source": json_files[0],
+                        "deal_id": deal_id, 
+                        "record_type": "market_comp",
+                        "chunk_index": idx,
+                        "city": "Unknown" 
+                    })
+                
+                if comp_texts:
+                    # Ingest into "market_comps" Namespace (Public Knowledge Base)
+                    print(f"Ingesting {len(comp_texts)} comps into 'market_comps' namespace...")
+                    ingest_deal_assets(comp_texts, comp_metadatas, namespace="market_comps")
+
             except Exception as e:
-                print(f"Error reading JSON: {e}")
+                print(f"Error reading JSON or Ingesting to Vector DB: {e}")
                 return {
-                    "messages": [AIMessage(content=f"Error reading JSON: {e}", name="system_log")]
+                    "messages": [AIMessage(content=f"Error processing JSON/Vector DB: {e}", name="system_log")]
                 }
 
     msg = f"Loaded structured data from {json_files[0]}" if json_files else "No structured JSON found."
