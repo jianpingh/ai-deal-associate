@@ -2,52 +2,79 @@ import os
 from typing import List, Dict, Any
 from langchain_core.tools import tool
 from langchain_openai import OpenAIEmbeddings
-from pinecone import Pinecone
-from deal_agent.utils.config import Config
+from deal_agent.tools.vector_store import get_pinecone_index
 
 @tool
-def search_documents(query: str, deal_id: str) -> str:
+def search_documents(query: str, deal_id: str = None) -> str:
     """
-    Search for relevant documents in the vector database based on a query and deal ID.
-    Useful for finding specific information within the deal documents (CIM, financials, etc.).
+    Search for relevant documents in the vector database based on a query.
+    Searches both the current deal's assets and market comparables.
     
     Args:
         query: The search query string.
-        deal_id: The unique identifier for the deal to filter results.
+        deal_id: Optional deal ID to filter results. If not provided, searches broadly.
     """
-    # MOCK DATA FOR TESTING
-    return f"[MOCK] Found relevant documents for deal {deal_id} matching '{query}':\n1. CIM.pdf (Page 12): Revenue grew by 20% YoY.\n2. Financials.xlsx: EBITDA margin is 15%."
+    try:
+        index = get_pinecone_index()
+        if not index:
+            return "Error: Vector database not configured."
 
-    # try:
-    #     # Check for API keys
-    #     if not Config.PINECONE_API_KEY:
-    #         return "Error: PINECONE_API_KEY is not set in environment variables."
-    #     
-    #     # Initialize Pinecone
-    #     pc = Pinecone(api_key=Config.PINECONE_API_KEY)
-    #     
-    #     # Get index name from env or default
-    #     index_name = os.getenv("PINECONE_INDEX_NAME", "ai-deal-associate")
-    #     
-    #     index = pc.Index(index_name)
-    #
-    #     # Initialize Embeddings
-    #     embeddings = OpenAIEmbeddings(api_key=Config.OPENAI_API_KEY)
-    #     vector = embeddings.embed_query(query)
-    #
-    #     # Search Pinecone
-    #     # We filter by deal_id to ensure we only get results for the current deal
-    #     results = index.query(
-    #         vector=vector,
-    #         top_k=5,
-    #         include_metadata=True,
-    #         filter={"deal_id": deal_id}
-    #     )
-    #     
-    #     # Format results
-    #     formatted_results = []
-    #     for match in results.matches:
-    #         content = match.metadata.get("text", "")
+        # Initialize Embeddings
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+        vector = embeddings.embed_query(query)
+
+        results_text = []
+
+        # 1. Search 'deal' namespace (Current Deal Assets)
+        # Filter by deal_id if provided
+        filter_dict = {"deal_id": deal_id} if deal_id else {}
+        
+        try:
+            deal_results = index.query(
+                vector=vector,
+                top_k=5,
+                include_metadata=True,
+                namespace="deal",
+                filter=filter_dict
+            )
+            
+            for match in deal_results.matches:
+                # Remove threshold to ensure we get results even for broad queries
+                # if match.score > 0.5: 
+                source = match.metadata.get("source", "Unknown")
+                text = match.metadata.get("text", "")
+                results_text.append(f"[Source: {source} (Deal Asset)]\n{text}")
+        except Exception as e:
+            print(f"Error searching deal namespace: {e}")
+
+        # 2. Search 'market_comps' namespace (Market Comparables)
+        # We might want to search comps even without deal_id, or use deal_id if they are associated
+        # For "deals learned", we definitely want to check here.
+        try:
+            comp_results = index.query(
+                vector=vector,
+                top_k=5,
+                include_metadata=True,
+                namespace="market_comps",
+                filter=filter_dict # Filter by deal_id if we only want comps relevant to this deal context
+            )
+            
+            for match in comp_results.matches:
+                # Remove threshold to ensure we get results even for broad queries
+                # if match.score > 0.5:
+                source = match.metadata.get("source", "Unknown")
+                text = match.metadata.get("text", "")
+                results_text.append(f"[Source: {source} (Market Comp)]\n{text}")
+        except Exception as e:
+            print(f"Error searching market_comps namespace: {e}")
+
+        if not results_text:
+            return "No relevant documents found in the knowledge base."
+
+        return "\n\n".join(results_text)
+
+    except Exception as e:
+        return f"Error performing search: {e}"
     #         source = match.metadata.get("source", "Unknown")
     #         page = match.metadata.get("page", "N/A")
     #         formatted_results.append(f"Source: {source} (Page {page})\nContent: {content}")
