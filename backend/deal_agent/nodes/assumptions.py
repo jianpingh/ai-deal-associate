@@ -24,6 +24,20 @@ def propose_assumptions(state: DealState):
     # Get Default Assumptions (Base)
     assumptions_data = fetch_default_assumptions()
     
+    # Extract Area from Source JSON if available
+    assets = source_json.get("assets", [])
+    if assets:
+        # Try to get area from the first asset's logistics_asset field
+        logistics_asset = assets[0].get("logistics_asset", {})
+        area_m2 = logistics_asset.get("area_m2")
+        if area_m2:
+            assumptions_data["area"] = float(area_m2)
+            assumptions_data["leasable_area"] = float(area_m2)
+
+    # Update default assumptions with blended rent from comps
+    assumptions_data["market_rent"] = blended_rent
+    assumptions_data["erv"] = blended_rent
+    
     # 2. Use LLM to generate the detailed proposal
     llm = ChatOpenAI(model="gpt-4o", temperature=0.2)
     
