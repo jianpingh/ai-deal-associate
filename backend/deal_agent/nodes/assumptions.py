@@ -36,6 +36,15 @@ def propose_assumptions(state: DealState):
     - **Structured Data**: {json.dumps(source_json, indent=2)[:1000]}
     - **Default Market Assumptions**: {json.dumps(assumptions_data, indent=2)}
     
+    **CRITICAL INSTRUCTION ON CURRENCY:**
+    - The target model MUST be in **EUROS (€)**.
+    - The source data might be in GBP (£) or other currencies.
+    - **YOU MUST CONVERT ALL FIGURES TO EUROS (€) PSM (Per Square Meter).**
+    - Use conversion rate: **1 GBP = 1.2 EUR**.
+    - Use unit conversion: **1 sq ft = 0.0929 sq m** (or Price PSF * 10.764 = Price PSM).
+    - If the source rent is ~£4-6, it is likely GBP PSF. Convert it: £5.5 PSF * 10.764 * 1.2 ≈ €71 PSM.
+    - **DO NOT output GBP (£) figures in the final proposal.** All figures must be € PSM.
+
     **Task:**
     Generate a detailed "Underwriting Assumptions" proposal. 
     You MUST explicitly reference the tenancy schedule (from ingestion analysis) and the comps.
@@ -46,11 +55,13 @@ def propose_assumptions(state: DealState):
     
     **Rent & ERV**
     
-    • Current passing rent: [Extract from data or estimate] (weighted from the rent roll)
+    • Current passing rent: **£[Value] PSF** / **€[Value] PSM**
+      *(Calculation: Source Rent £[Value] PSF * 10.764 * 1.2 ≈ €[Value] PSM)*
     
     • Blended market rent from comps: €{blended_rent}/m²/year
     
-    • Proposed ERV: **[Value]** (Provide rationale, e.g., discount/premium to comps)
+    • Proposed ERV: **€[Value]/m²/year**
+      *(Rationale: [Provide rationale, e.g., discount/premium to comps])*
     
     **Tenancy & Rollover** (from tenancy schedule)
     

@@ -75,6 +75,41 @@ def load_json_data(state: DealState):
                     leases = asset.get("leases", [])
                     tenant_names = [l.get("tenant", {}).get("name", "Unknown") for l in leases]
                     
+                    # --- Currency & Unit Conversion Logic ---
+                    # Original Data: GBP PSF (assumed for UK assets if value < 10)
+                    # Target Data: EUR PSM
+                    # Conversion Factors:
+                    # 1. Unit: 1 sq m = 10.764 sq ft. So Price PSM = Price PSF * 10.764
+                    # 2. Currency: 1 GBP = 1.2 EUR (Approx)
+                    
+                    raw_currency = asset.get('currency', 'GBP')
+                    display_currency = "EUR"
+                    conversion_note = ""
+                    
+                    # Calculate weighted average rent for display
+                    total_rent = 0
+                    total_area = 0
+                    
+                    for lease in leases:
+                        raw_rent = lease.get('rent_psm_pa', 0) # In JSON this is actually PSF if it's ~5.5
+                        area = lease.get('area_m2', 0)
+                        
+                        # Conversion Logic
+                        if raw_currency == "GBP" and raw_rent < 20: # Heuristic check for PSF
+                            # Convert GBP PSF -> EUR PSM
+                            rent_eur_psm = raw_rent * 10.764 * 1.2
+                            conversion_note = f"(Converted from £{raw_rent} PSF to €{rent_eur_psm:.2f} PSM)"
+                        else:
+                            rent_eur_psm = raw_rent # Assume already EUR PSM or close enough
+                            
+                        total_rent += rent_eur_psm * area
+                        total_area += area
+                        
+                        # Update lease info for text blob (optional, but good for detail)
+                        lease['display_rent_eur_psm'] = round(rent_eur_psm, 2)
+
+                    avg_rent_eur_psm = round(total_rent / total_area, 2) if total_area > 0 else 0
+
                     text_blob = f"""
                     Asset Name: {asset.get('name', 'Unknown')}
                     Type: {asset.get('asset_type', 'Logistics')} ({asset.get('tenure', '')})
@@ -82,6 +117,8 @@ def load_json_data(state: DealState):
                     Size: {logistics.get('area_m2', 0)} sqm
                     Specs: {logistics.get('eaves_height_m', 0)}m height, {logistics.get('dock_doors', 0)} docks
                     Tenants: {', '.join(tenant_names)}
+                    Current Rent (Normalized): €{avg_rent_eur_psm} /sqm/year
+                    Currency Basis: Converted to EUR PSM for comparison. {conversion_note}
                     """
                     asset_texts.append(text_blob.strip())
                     asset_metadatas.append({
