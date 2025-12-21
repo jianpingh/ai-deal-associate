@@ -78,14 +78,26 @@
       "source": "internal://IM_2024_LyonCBRE.pdf#p12"
     },
     {
-      "name": "3rd Party Logistics – Arcese",
+      "name": "Arcese Logistics Hub",
       "distance_km": 120,
       "asset_type": "Logistics",
       "size_m2": 89139,
-      "rent_psm_pa": 6.366,
+      "yield": 0.045,
+      "rent_psm_pa": 82.2,
       "acquisition_date": "2018-09-29",
-      "notes": "Base + enhanced yard area.",
+      "notes": "Base + enhanced yard area. Converted from GBP PSF.",
       "source": "internal://CNH_Industrial_sheet#row23"
+    },
+    {
+      "name": "Daventry Distribution Centre",
+      "distance_km": 5,
+      "asset_type": "Logistics",
+      "size_m2": 40000,
+      "yield": 0.046,
+      "rent_psm_pa": 85.0,
+      "acquisition_date": "2023-11-10",
+      "notes": "Nearby comparable.",
+      "source": "internal://Daventry_Market_Report_2023.pdf"
     }
   ]
 }

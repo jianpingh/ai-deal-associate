@@ -11,11 +11,22 @@ def propose_comparables(state: DealState):
     """
     print("--- Node: Propose Comparables ---")
     
-    # Fetch comps from tool (simulating API)
-    all_comps = fetch_market_comparables()
+    # Try to get location from extracted data
+    location = None
+    extracted = state.get("extracted_data", {})
+    assets = extracted.get("assets", [])
+    if assets:
+        # Use the city of the first asset as the primary location context
+        location = assets[0].get("city")
+        if not location:
+            location = assets[0].get("country")
+            
+    # Fetch comps from Pinecone
+    # If location is found (e.g. "Daventry"), it will search "Logistics market comparables in Daventry"
+    all_comps = fetch_market_comparables(location=location)
     
-    # Simple logic: take first 3 as proposal
-    comps_data = all_comps[:3]
+    # Simple logic: take top 5 as proposal (Pinecone returns top_k=10)
+    comps_data = all_comps[:5]
     
     # Calculate blended rent for the proposed set
     blended_rent = calculate_blended_rent(comps_data)
@@ -27,7 +38,7 @@ def propose_comparables(state: DealState):
     ])
     
     response_content = (
-        f"I’ve identified {len(all_comps)} internal comparable logistics assets based on location, size, and specification.\n\n"
+        f"I’ve identified {len(all_comps)} internal comparable logistics assets based on location ({location or 'General'}) and specification.\n\n"
         f"Recommended set ({len(comps_data)}):\n\n"
         f"{comps_list_text}\n\n"
         f"Current blended market rent from these {len(comps_data)} comps: **€{blended_rent}/m²/year**.\n\n"
@@ -46,8 +57,15 @@ def update_comparables(state: DealState):
     """
     print("--- Node: Update Comparables ---")
     
+    # Try to get location from extracted data
+    location = None
+    extracted = state.get("extracted_data", {})
+    assets = extracted.get("assets", [])
+    if assets:
+        location = assets[0].get("city") or assets[0].get("country")
+
     # Fetch all available comps from tool to handle additions
-    all_available_comps = fetch_market_comparables()
+    all_available_comps = fetch_market_comparables(location=location)
     current_comps = state.get("comps_data", [])
     
     # Get last user message

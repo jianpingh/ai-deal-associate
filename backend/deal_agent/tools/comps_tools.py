@@ -1,3 +1,6 @@
+from deal_agent.tools.vector_store import get_pinecone_index
+from langchain_openai import OpenAIEmbeddings
+
 def calculate_blended_rent(comps_data: list) -> float:
     """
     Calculates the weighted average (blended) market rent based on size.
@@ -8,18 +11,24 @@ def calculate_blended_rent(comps_data: list) -> float:
     
     for comp in comps_data:
         try:
-            # Parse rent (e.g., "82", "€82")
-            rent_str = str(comp.get("rent", "0")).replace("€", "").strip()
-            rent = float(rent_str)
+            # Parse rent (e.g., "82", "€82", 82.5)
+            rent_val = comp.get("rent", 0)
+            if isinstance(rent_val, str):
+                rent_str = rent_val.replace("€", "").replace("£", "").strip()
+                rent = float(rent_str)
+            else:
+                rent = float(rent_val)
             
-            # Parse size (e.g., "52k m2", "60,000 sqft")
-            # Simple heuristic: remove non-numeric chars except '.' and 'k' multiplier
-            size_raw = str(comp.get("size", "0")).lower()
-            multiplier = 1000 if 'k' in size_raw else 1
-            
-            # Remove common units and separators
-            clean_size = size_raw.replace("k", "").replace("m2", "").replace("sqft", "").replace(",", "").strip()
-            size = float(clean_size) * multiplier
+            # Parse size (e.g., "52k m2", "60,000 sqft", 52000)
+            size_val = comp.get("size", 0)
+            if isinstance(size_val, str):
+                size_raw = size_val.lower()
+                multiplier = 1000 if 'k' in size_raw else 1
+                # Handle both m2 and m²
+                clean_size = size_raw.replace("k", "").replace("m²", "").replace("m2", "").replace("sqft", "").replace(",", "").strip()
+                size = float(clean_size) * multiplier
+            else:
+                size = float(size_val)
             
             if size > 0:
                 total_rent_mass += rent * size
@@ -35,20 +44,67 @@ def calculate_blended_rent(comps_data: list) -> float:
 
 def fetch_market_comparables(location: str = None, asset_type: str = "Logistics") -> list:
     """
-    Simulates an API call to a market data provider (e.g., CoStar, RCA, Internal DB).
+    Fetches comparable properties from the Pinecone vector database.
     Returns a list of comparable properties.
     """
-    # Mock database
-    # In a real scenario, this would query a vector DB or external API
-    mock_db = [
-        {"name": "Comp A", "size": "52k m2", "yield": "4.5%", "rent": "82", "dist": "20km"},
-        {"name": "Comp B", "size": "60k m2", "yield": "4.7%", "rent": "85", "dist": "35km"},
-        {"name": "Comp C", "size": "45k m2", "yield": "4.4%", "rent": "87", "dist": "50km"},
-        {"name": "Comp D", "size": "75k m2", "yield": "4.8%", "rent": "80", "dist": "15km"}, # The XXL box
-        {"name": "Comp E", "size": "40k m2", "yield": "4.3%", "rent": "90", "dist": "60km"},
-    ]
-    
-    # Simulate filtering (if we had real logic)
-    # For now, return the top 3 as the "proposed" set, or all for "search"
-    return mock_db
+    try:
+        index = get_pinecone_index()
+        if not index:
+            print("Pinecone index not found, returning empty list.")
+            return []
+
+        # Initialize Embeddings
+        embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
+        
+        # Construct a query vector
+        query_text = f"{asset_type} market comparables"
+        if location:
+            query_text += f" in {location}"
+            
+        vector = embeddings.embed_query(query_text)
+
+        # Query 'market_comps' namespace
+        results = index.query(
+            vector=vector,
+            top_k=10, # Fetch more to filter
+            include_metadata=True,
+            namespace="market_comps"
+        )
+        
+        comps_list = []
+        for match in results.matches:
+            meta = match.metadata
+            # Map metadata to expected format
+            # Expected: name, size, yield, rent, dist
+            
+            # Handle size
+            size_val = meta.get("size_m2", 0)
+            size_str = f"{int(size_val/1000)}k m²" if size_val else "N/A"
+            
+            # Handle yield
+            yield_val = meta.get("yield", 0)
+            yield_str = f"{yield_val*100:.1f}%" if yield_val else "N/A"
+            
+            # Handle rent
+            rent_val = meta.get("rent_psm_pa", 0)
+
+            # Handle distance
+            dist_val = meta.get("distance_km", 0)
+            dist_str = f"{dist_val} km" if dist_val else "Unknown"
+            
+            comp = {
+                "name": meta.get("name", "Unknown Asset"),
+                "size": size_str,
+                "yield": yield_str,
+                "rent": rent_val,
+                "dist": dist_str,
+                "raw_metadata": meta # Keep raw data just in case
+            }
+            comps_list.append(comp)
+            
+        return comps_list
+
+    except Exception as e:
+        print(f"Error fetching comps from Pinecone: {e}")
+        return []
 

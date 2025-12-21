@@ -156,7 +156,12 @@ def load_json_data(state: DealState):
                         "deal_id": deal_id, 
                         "record_type": "market_comp",
                         "chunk_index": idx,
-                        "city": "Unknown" 
+                        "city": "Unknown",
+                        "name": comp.get('name', 'Unknown'),
+                        "size_m2": comp.get('size_m2', 0),
+                        "yield": comp.get('yield', 0),
+                        "rent_psm_pa": comp.get('rent_psm_pa', 0),
+                        "distance_km": comp.get('distance_km', 0)
                     })
                 
                 if comp_texts:
