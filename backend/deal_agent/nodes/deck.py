@@ -59,7 +59,7 @@ def generate_deck(state: DealState):
 
     # --- Prepare Data for Replacement ---
     extracted = state.get("extracted_data", {})
-    assumptions = state.get("assumptions", {})
+    assumptions = state.get("financial_assumptions", {})
     model = state.get("financial_model", {})
     
     # Tenancy Logic
