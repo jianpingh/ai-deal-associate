@@ -230,12 +230,12 @@ def build_model(state: DealState):
     
     # Format metrics for display
     if metrics['irr'] is not None:
-        irr_display = f"{metrics['irr']*100:.1f}%"
+        irr_display = f"{metrics['irr']*100:.2f}%"
     else:
-        irr_display = "8.5%" # Fallback default if calculation fails
+        irr_display = "8.50%" # Fallback default if calculation fails
         
     em_display = f"{metrics['equity_multiple']:.2f}x"
-    yoc_display = f"{metrics['yield_on_cost']*100:.1f}%"
+    yoc_display = f"{metrics['yield_on_cost']*100:.2f}%"
 
     # Agent response
     response_content = (
