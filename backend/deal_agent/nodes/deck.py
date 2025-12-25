@@ -116,11 +116,11 @@ def generate_deck(state: DealState):
         "{{BUSINESS_PLAN_BULLETS}}": bp_text,
         "{{SENSITIVITY_ANALYSIS}}": sens_text,
         "{{APPENDIX_BULLETS}}": app_text,
-        "{{ENTRY_YIELD}}": f"{assumptions.get('entry_yield', 0):.2%}",
+        "{{ENTRY_YIELD}}": f"{float(assumptions.get('entry_yield') or 0.045):.2%}",
         "{{IRR}}": safe_format_percent(model.get('irr')),
-        "{{MOIC}}": safe_format_float(model.get('equity_multiple')),
-        "{{EXIT_YIELD}}": f"{assumptions.get('exit_yield', 0):.2%}",
-        "{{MARKET_RENT}}": f"{assumptions.get('market_rent', 0)}",
+        "{{MOIC}}": safe_format_float(model.get('em') or model.get('equity_multiple')),
+        "{{EXIT_YIELD}}": f"{float(assumptions.get('exit_yield') or 0.0475):.2%}",
+        "{{MARKET_RENT}}": f"{assumptions.get('market_rent', 85)}",
     }
 
     # --- Replace Placeholders ---
