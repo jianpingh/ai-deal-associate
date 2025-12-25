@@ -6,7 +6,8 @@ def process_assumption_updates(current_assumptions: dict, user_input: str) -> di
     Supports updates for: growth, exit yield, discount rate, ERV, downtime, renewal probability.
     """
     updated = current_assumptions.copy()
-    user_input_lower = user_input.lower()
+    # Normalize input: replace underscores with spaces to handle "entry_yield" style inputs
+    user_input_lower = user_input.lower().replace("_", " ")
 
     # Helper to extract percentage (returns float 0.05 for 5%)
     def extract_percent(text):
@@ -59,6 +60,30 @@ def process_assumption_updates(current_assumptions: dict, user_input: str) -> di
         val = extract_percent(user_input_lower)
         if val is not None:
             updated["renewal_prob"] = val
+
+    # 7. Entry Yield
+    if "entry yield" in user_input_lower or "initial yield" in user_input_lower or "going in yield" in user_input_lower:
+        val = extract_percent(user_input_lower)
+        if val is not None:
+            updated["entry_yield"] = val
+
+    # 8. Capex
+    if "capex" in user_input_lower or "capital expenditure" in user_input_lower:
+        val = extract_number(user_input_lower)
+        if val is not None:
+            updated["capex"] = val
+
+    # 9. LTV
+    if "ltv" in user_input_lower or "loan to value" in user_input_lower:
+        val = extract_percent(user_input_lower)
+        if val is not None:
+            updated["ltv"] = val
+
+    # 10. Interest Rate
+    if "interest" in user_input_lower or "cost of debt" in user_input_lower:
+        val = extract_percent(user_input_lower)
+        if val is not None:
+            updated["interest_rate"] = val
 
     return updated
 
