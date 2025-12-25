@@ -307,7 +307,8 @@ def build_model(state: DealState):
         ],
         "financial_model": {
             "irr": metrics['irr'], 
-            "em": metrics['equity_multiple'], 
+            "equity_multiple": metrics['equity_multiple'],
+            "yield_on_cost": metrics['yield_on_cost'],
             "status": "built"
         }
     }
