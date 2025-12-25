@@ -31,12 +31,14 @@ def calculate_simple_metrics(assumptions: dict):
     rent_growth = normalize_percent(assumptions.get("rent_growth"), 0.03)
     ltv = normalize_percent(assumptions.get("ltv"), 0.60)
     interest_rate = normalize_percent(assumptions.get("interest_rate"), 0.04)
-    opex_ratio = normalize_percent(assumptions.get("opex_ratio"), 0.10)
+    opex_ratio = normalize_percent(assumptions.get("opex_ratio"), 0.10) # Revert to 10% to match Excel
     capex = float(assumptions.get("capex") or 0)
+    purchasers_costs = normalize_percent(assumptions.get("purchasers_costs"), 0.0) # Set to 0.0% to match Excel
     
     # 1. Purchase Price
     initial_rent = market_rent * area
-    purchase_price = initial_rent / entry_yield
+    net_purchase_price = initial_rent / entry_yield
+    purchase_price = net_purchase_price * (1 + purchasers_costs) # Gross Purchase Price
     loan_amount = purchase_price * ltv
     equity_invested = purchase_price - loan_amount
     
@@ -45,16 +47,20 @@ def calculate_simple_metrics(assumptions: dict):
     current_rent = initial_rent
     
     for year in range(1, 11):
-        # Simple growth
-        current_rent *= (1 + rent_growth)
+        # Growth starts from Year 2
+        if year > 1:
+            current_rent *= (1 + rent_growth)
+            
         noi = current_rent * (1 - opex_ratio) - capex
         interest = loan_amount * interest_rate
         cash_flow = noi - interest
         cash_flows.append(cash_flow)
         
     # 3. Exit
-    exit_noi = current_rent * (1 - opex_ratio) - capex
-    exit_value = exit_noi / exit_yield
+    # Excel uses Forward NOI (Year 11) for Exit Valuation
+    exit_rent_forward = current_rent * (1 + rent_growth)
+    exit_noi_forward = exit_rent_forward * (1 - opex_ratio) - capex
+    exit_value = exit_noi_forward / exit_yield
     net_sale_proceeds = exit_value - loan_amount # Repay debt
     
     # Add sale proceeds to last year's cash flow
@@ -72,11 +78,15 @@ def calculate_simple_metrics(assumptions: dict):
         irr = None
 
     if equity_invested > 0:
-        equity_multiple = (sum(cash_flows) + equity_invested) / equity_invested # Simplified EM
+        # Excel appears to calculate EM as (Total Cash Returned + Equity Invested) / Equity Invested
+        # This effectively double counts the return of capital, but we match the template logic here.
+        equity_multiple = (sum(cash_flows) + equity_invested) / equity_invested 
     else:
         equity_multiple = 0.0
         
-    yield_on_cost = (initial_rent * 0.9) / purchase_price # Initial YoC
+    # Excel calculates Yield on Cost based on Year 2 (Stabilized) NOI
+    stabilized_rent = initial_rent * (1 + rent_growth)
+    yield_on_cost = (stabilized_rent * (1 - opex_ratio)) / purchase_price 
     
     return {
         "irr": irr,
