@@ -79,7 +79,8 @@ def calculate_simple_metrics(inputs: dict):
     net_purchase_price = initial_rent / entry_yield
     purchase_price = net_purchase_price * (1 + purchasers_costs) # Gross Purchase Price
     loan_amount = purchase_price * ltv
-    equity_invested = purchase_price - loan_amount
+    # Capex is treated as an initial capital outlay, increasing the equity required
+    equity_invested = purchase_price - loan_amount + capex
     
     # 2. Cash Flows (10 Years)
     cash_flows = []
@@ -90,7 +91,8 @@ def calculate_simple_metrics(inputs: dict):
         if year > 1:
             current_rent *= (1 + rent_growth)
             
-        noi = current_rent * (1 - opex_ratio) - capex
+        # Capex is now handled upfront, so we don't deduct it annually from NOI
+        noi = current_rent * (1 - opex_ratio)
         interest = loan_amount * interest_rate
         cash_flow = noi - interest
         cash_flows.append(cash_flow)
@@ -98,7 +100,8 @@ def calculate_simple_metrics(inputs: dict):
     # 3. Exit
     # Excel uses Forward NOI (Year 11) for Exit Valuation
     exit_rent_forward = current_rent * (1 + rent_growth)
-    exit_noi_forward = exit_rent_forward * (1 - opex_ratio) - capex
+    # Consistent with annual NOI, do not deduct Capex here either
+    exit_noi_forward = exit_rent_forward * (1 - opex_ratio)
     if exit_yield == 0:
         exit_yield = 0.0001
     exit_value = exit_noi_forward / exit_yield

@@ -188,7 +188,7 @@ def generate_deck(state: DealState):
             AIMessage(content=status_content, name="system_log"),
             AIMessage(content=response_content, name="agent")
         ],
-        "deck_content": {"slides": ["Summary", "Market", "Tenancy", "Business Plan", "Sensitivities", "Appendix"]}
+        "deck_content": {"slides": ["Summary", "Market", "Tenancy", "Business Plan", "Financials", "Sensitivities", "Appendix"]}
     }
 
 def refresh_deck_views(state: DealState):

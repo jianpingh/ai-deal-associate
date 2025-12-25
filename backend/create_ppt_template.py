@@ -78,11 +78,11 @@ def create_ic_deck_template():
     tf = body.text_frame
     tf.text = "{{BUSINESS_PLAN_BULLETS}}"
 
-    # Slide 6: Financial Overview & Sensitivities
+    # Slide 6: Financial Overview
     slide_layout = prs.slide_layouts[1]
     slide = prs.slides.add_slide(slide_layout)
     title = slide.shapes.title
-    title.text = "Financial Overview & Sensitivities"
+    title.text = "Financial Overview"
     body = slide.placeholders[1]
     tf = body.text_frame
     tf.text = "Key Metrics:"
@@ -94,14 +94,17 @@ def create_ic_deck_template():
     p.text = "Equity Multiple: {{MOIC}}"
     p = tf.add_paragraph()
     p.text = "Exit Yield: {{EXIT_YIELD}}"
-    p = tf.add_paragraph()
-    p.text = ""
-    p = tf.add_paragraph()
-    p.text = "Sensitivity Analysis:"
-    p = tf.add_paragraph()
-    p.text = "{{SENSITIVITY_ANALYSIS}}"
 
-    # Slide 7: Appendix
+    # Slide 7: Sensitivities
+    slide_layout = prs.slide_layouts[1]
+    slide = prs.slides.add_slide(slide_layout)
+    title = slide.shapes.title
+    title.text = "Sensitivities"
+    body = slide.placeholders[1]
+    tf = body.text_frame
+    tf.text = "{{SENSITIVITY_ANALYSIS}}"
+
+    # Slide 8: Appendix
     slide_layout = prs.slide_layouts[1]
     slide = prs.slides.add_slide(slide_layout)
     title = slide.shapes.title
