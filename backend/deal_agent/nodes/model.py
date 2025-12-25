@@ -84,9 +84,8 @@ def calculate_simple_metrics(assumptions: dict):
     else:
         equity_multiple = 0.0
         
-    # Excel calculates Yield on Cost based on Year 2 (Stabilized) NOI
-    stabilized_rent = initial_rent * (1 + rent_growth)
-    yield_on_cost = (stabilized_rent * (1 - opex_ratio)) / purchase_price 
+    # Excel calculates Yield on Cost based on Year 1 NOI (B4)
+    yield_on_cost = (initial_rent * (1 - opex_ratio)) / purchase_price 
     
     return {
         "irr": irr,
