@@ -7,9 +7,10 @@ import ReactMarkdown from "react-markdown";
 
 interface Message {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "tool";
   content: string;
   name?: string;
+  type?: string;
 }
 
 export default function Home() {
@@ -117,9 +118,10 @@ export default function Home() {
               // 3. Map server messages to frontend format
               const newFrontendMessages = relevantMessages.map((msg: any, index: number) => ({
                 id: `${userMessage.id}_response_${index}`, // Stable ID based on sequence
-                role: "assistant" as const,
+                role: msg.role || "assistant", // Use role from server if available
                 content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
-                name: msg.name || "agent"
+                name: msg.name || "agent",
+                type: msg.type // Capture message type (e.g. 'tool')
               }));
 
               return [...history, ...newFrontendMessages];
@@ -189,6 +191,11 @@ export default function Home() {
             ) : (
               messages.map((msg) => {
                 if (msg.role === "assistant" && !msg.content) return null;
+                
+                // Hide tool messages or messages with type 'tool'
+                if (msg.role === "tool" || msg.type === "tool") {
+                    return null;
+                }
                 
                 // Special styling for system logs
                 if (msg.name === "system_log") {
