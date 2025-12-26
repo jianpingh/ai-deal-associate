@@ -64,6 +64,7 @@ def rebuild_model_for_scenario(state: DealState):
     base_model = state.get("financial_model", {})
     base_irr = base_model.get("irr", 0)
     base_em = base_model.get("equity_multiple", 0)
+    base_yoc = base_model.get("yield_on_cost", 0)
     
     # Get current assumptions and apply scenario adjustments
     current_assumptions = state.get("financial_assumptions", {})
@@ -109,6 +110,7 @@ def rebuild_model_for_scenario(state: DealState):
         metrics = calculate_simple_metrics(inputs)
         scenario_irr = metrics.get("irr", 0) or 0
         scenario_em = metrics.get("equity_multiple", 0) or 0
+        scenario_yoc = metrics.get("yield_on_cost", 0) or 0
         print(f"[DEBUG] Base IRR: {base_irr}, Base EM: {base_em}")
         print(f"[DEBUG] Scenario adjustments: {scenario_assumptions}")
         print(f"[DEBUG] Scenario IRR: {scenario_irr}, EM: {scenario_em}")
@@ -116,19 +118,49 @@ def rebuild_model_for_scenario(state: DealState):
         print(f"Error recalculating scenario metrics: {e}")
         scenario_irr = 0
         scenario_em = 0
+        scenario_yoc = 0
+
+    # --- Product Logic: Calculate Deltas & Generate Insights ---
+
+    # 1. Calculate Deltas (Changes)
+    irr_delta_bps = (scenario_irr - base_irr) * 10000 # Basis points
+    em_delta = scenario_em - base_em
     
-    # Format percentages and multiples
+    # 2. Generate Automated Insight (Simple Rule-based)
+    insight = ""
+    # Thresholds (can be configurable)
+    HURDLE_RATE = 0.10 
+    SIGNIFICANT_DROP_BPS = -300 # -3% IRR drop is significant
+
+    if scenario_irr < HURDLE_RATE:
+        insight = "⚠️ **Risk Alert**: Returns fall below typical hurdle rates (10%) in this scenario. The deal may be too risky."
+    elif irr_delta_bps < SIGNIFICANT_DROP_BPS:
+        insight = "ℹ️ **Sensitivity**: The project is highly sensitive to these assumptions. Returns drop significantly."
+    elif abs(irr_delta_bps) < 50:
+        insight = "✅ **Resilient**: The project returns are very stable. This scenario has minimal impact."
+    else:
+        insight = "📉 **Impact**: Moderate impact on returns, but the project remains viable."
+
+    # 3. Format Response (Professional Structure)
     scenario_irr_pct = f"{scenario_irr*100:.1f}%"
     base_irr_pct = f"{base_irr*100:.1f}%"
     scenario_em_fmt = f"{scenario_em:.2f}x"
     base_em_fmt = f"{base_em:.2f}x"
+    scenario_yoc_pct = f"{scenario_yoc*100:.2f}%"
+    base_yoc_pct = f"{base_yoc*100:.2f}%"
     
-    # Agent response with dynamic values
+    # Format adjustments list
+    adjustments_str = "\n".join([f"- {adj}" for adj in adjustments_applied])
+
     response_content = (
-        f"Model rebuilt for {scenario_name}.\n\n"
-        "Scenario Impact:\n"
-        f"- Levered IRR: {scenario_irr_pct} (vs {base_irr_pct} Base)\n"
-        f"- Equity Multiple: {scenario_em_fmt} (vs {base_em_fmt} Base)"
+        f"### 📊 Scenario Analysis: {scenario_name}\n\n"
+        f"**Assumptions Applied:**\n"
+        f"{adjustments_str}\n\n"
+        f"**Key Outcomes:**\n"
+        f"- **Levered IRR**: {scenario_irr_pct} (vs Base {base_irr_pct}, {irr_delta_bps:+.0f} bps)\n"
+        f"- **Equity Multiple**: {scenario_em_fmt} (vs Base {base_em_fmt}, {em_delta:+.2f}x)\n"
+        f"- **Yield on Cost**: {scenario_yoc_pct} (vs Base {base_yoc_pct})\n\n"
+        f"{insight}"
     )
     
     return {"messages": [AIMessage(content=response_content, name="agent")]}
