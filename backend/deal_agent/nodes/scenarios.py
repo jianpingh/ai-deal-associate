@@ -1,6 +1,10 @@
 from langchain_core.messages import AIMessage
 from deal_agent.state import DealState
 from deal_agent.nodes.model import get_model_inputs, calculate_simple_metrics
+from deal_agent.tools.excel_engine import fill_excel_named_ranges, write_list_to_excel
+from deal_agent.tools.s3_utils import upload_to_s3_and_get_link
+import os
+import time
 
 def prepare_scenario_analysis(state: DealState):
     """
@@ -141,6 +145,45 @@ def rebuild_model_for_scenario(state: DealState):
     else:
         insight = "📉 **Impact**: Moderate impact on returns, but the project remains viable."
 
+    # --- Generate Excel Model for Scenario ---
+    download_link = ""
+    try:
+        # Prepare inputs for Excel
+        excel_inputs = {
+            "Market_Rent": inputs["market_rent"],
+            "Area": inputs["area"],
+            "Exit_Yield": inputs["exit_yield"],
+            "Rent_Growth": inputs["rent_growth"],
+            "Entry_Yield": inputs["entry_yield"],
+            "LTV": inputs["ltv"],
+            "Interest_Rate": inputs["interest_rate"],
+            "OpEx_Ratio": inputs["opex_ratio"],
+            "Capex": inputs["capex"]
+        }
+        
+        # Locate template
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        backend_dir = os.path.dirname(os.path.dirname(current_dir))
+        template_path = os.path.join(backend_dir, "data", "templates", "financial_model_template.xlsx")
+        
+        if os.path.exists(template_path):
+            # Update Excel with scenario assumptions
+            fill_excel_named_ranges.invoke({"file_path": template_path, "data": excel_inputs})
+            
+            # Upload to S3
+            timestamp = int(time.time())
+            deal_id = state.get("deal_id", "temp")
+            # Sanitize scenario name for filename
+            safe_scenario_name = "".join([c if c.isalnum() else "_" for c in scenario_name])
+            s3_object_name = f"financial_models/model_{deal_id}_{safe_scenario_name}_{timestamp}.xlsx"
+            
+            s3_url = upload_to_s3_and_get_link(template_path, s3_object_name)
+            
+            if s3_url:
+                download_link = f"📥 **[Download Financial Model (Excel)]({s3_url})**"
+    except Exception as e:
+        print(f"Error generating scenario Excel: {e}")
+
     # 3. Format Response (Professional Structure)
     scenario_irr_pct = f"{scenario_irr*100:.1f}%"
     base_irr_pct = f"{base_irr*100:.1f}%"
@@ -152,14 +195,18 @@ def rebuild_model_for_scenario(state: DealState):
     # Format adjustments list
     adjustments_str = "\n".join([f"- {adj}" for adj in adjustments_applied])
 
+    # Handle generic scenario name in header
+    header_suffix = f": {scenario_name}" if scenario_name != "Scenario" else ""
+
     response_content = (
-        f"### 📊 Scenario Analysis: {scenario_name}\n\n"
+        f"### 📊 Scenario Analysis{header_suffix}\n\n"
         f"**Assumptions Applied:**\n"
         f"{adjustments_str}\n\n"
         f"**Key Outcomes:**\n"
-        f"- **Levered IRR**: {scenario_irr_pct} (vs Base {base_irr_pct}, {irr_delta_bps:+.0f} bps)\n"
-        f"- **Equity Multiple**: {scenario_em_fmt} (vs Base {base_em_fmt}, {em_delta:+.2f}x)\n"
-        f"- **Yield on Cost**: {scenario_yoc_pct} (vs Base {base_yoc_pct})\n\n"
+        f"- 10-Year Leveraged IRR: {scenario_irr_pct} (vs Base {base_irr_pct}, {irr_delta_bps:+.0f} bps)\n"
+        f"- Equity Multiple: {scenario_em_fmt} (vs Base {base_em_fmt}, {em_delta:+.2f}x)\n"
+        f"- Yield on Cost: {scenario_yoc_pct} (vs Base {base_yoc_pct})\n\n"
+        f"{download_link}\n\n"
         f"{insight}"
     )
     
