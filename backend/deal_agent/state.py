@@ -20,6 +20,7 @@ class DealState(TypedDict):
     extracted_data: Dict[str, Any]  # From PDF ingestion
     comps_data: List[Dict[str, Any]] # Comparable companies
     financial_assumptions: Dict[str, Any]
+    last_assumption_changes: Optional[str] # Track last changes for UI feedback
     financial_model: Dict[str, Any] # Calculated model results
     deck_content: Dict[str, Any] # Generated deck structure
     scenarios: Dict[str, Any] # Scenario analysis results

@@ -139,17 +139,30 @@ def update_assumptions(state: DealState):
     changes = []
     for k, v in updated_assumptions.items():
         if v != current_assumptions.get(k):
-            changes.append(f"{k}: {v}")
+            # Format values for display
+            display_val = v
+            if k in ['exit_yield', 'entry_yield', 'discount_rate', 'growth', 'interest_rate', 'ltv', 'renewal_prob']:
+                display_val = f"{v*100:.1f}%"
+            elif k == 'downtime':
+                display_val = f"{v} months"
+            
+            # Format key for display
+            display_key = k.replace('_', ' ')
+            
+            changes.append(f"{display_key} = {display_val}")
             
     if changes:
-        log_msg = f"Updated assumptions: {', '.join(changes)}"
+        # Store the changes string in state so the next node can use it
+        formatted_changes = "; ".join(changes)
+        return {
+            "financial_assumptions": updated_assumptions,
+            "last_assumption_changes": formatted_changes # Pass to next node
+        }
     else:
-        log_msg = "No specific assumption updates detected."
-
-    return {
-        "messages": [AIMessage(content=log_msg, name="system_log")],
-        "financial_assumptions": updated_assumptions
-    }
+        return {
+            "financial_assumptions": updated_assumptions,
+            "last_assumption_changes": "No changes detected"
+        }
 
 def assumptions_node(state: DealState):
     pass
