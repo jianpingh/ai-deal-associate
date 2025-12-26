@@ -92,7 +92,9 @@ def route_intent(state: DealState):
         "scenarios": "financial_model",
         "deck": "financial_model",
         "model": "financial_assumptions",
+        "update_assumptions": "financial_assumptions",
         "assumptions": "comps_data",
+        "update_comps": "comps_data",
         "comps": "extracted_data"
     }
     
