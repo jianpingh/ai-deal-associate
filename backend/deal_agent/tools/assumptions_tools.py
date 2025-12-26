@@ -1,12 +1,73 @@
 import re
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
 
 def process_assumption_updates(current_assumptions: dict, user_input: str) -> dict:
     """
-    Parses user input to update financial assumptions.
-    Supports updates for: growth, exit yield, discount rate, ERV, downtime, renewal probability.
+    Parses user input to update financial assumptions using LLM for semantic understanding.
+    Supports updates for: growth, exit yield, discount rate, ERV, downtime, renewal probability, etc.
     """
     updated = current_assumptions.copy()
-    # Normalize input: replace underscores with spaces to handle "entry_yield" style inputs
+    
+    try:
+        llm = ChatOpenAI(model="gpt-4o", temperature=0)
+        
+        # Define the schema and instructions for the LLM
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", 
+             "You are a financial modeling assistant. Your task is to update financial assumptions based on the user's input.\n"
+             "Current Assumptions: {current_assumptions}\n\n"
+             "Instructions:\n"
+             "1. Identify which assumptions the user wants to change.\n"
+             "2. Extract the new values. Convert percentages to decimals (e.g., 5% -> 0.05).\n"
+             "3. Return a JSON object containing ONLY the keys that need to be updated.\n"
+             "4. Supported keys: 'erv' (Market Rent), 'growth' (Rent Growth), 'exit_yield', 'entry_yield', 'discount_rate', "
+             "'downtime' (months), 'renewal_prob' (probability), 'ltv', 'interest_rate', 'capex', 'opex_ratio'.\n"
+             "5. If the user says 'increase by X', calculate the new value based on the current assumption.\n"
+             "6. If the user says 'set to X', use X directly.\n"
+             "7. For ERV/Rent, if the user gives a value like '100', assume it's the absolute value. If they say '+10%', calculate it.\n"
+             "8. Do not include markdown formatting like ```json."
+            ),
+            ("user", "{user_input}")
+        ])
+        
+        chain = prompt | llm | JsonOutputParser()
+        
+        # Invoke the chain
+        changes = chain.invoke({
+            "current_assumptions": current_assumptions,
+            "user_input": user_input
+        })
+        
+        # Apply changes to the updated dictionary
+        if isinstance(changes, dict):
+            for key, value in changes.items():
+                if key in updated:
+                    # Type safety checks
+                    if key in ['downtime']:
+                        updated[key] = int(value)
+                    else:
+                        updated[key] = float(value)
+                else:
+                    # Allow adding new keys if they are valid assumption keys
+                    valid_keys = ['erv', 'growth', 'exit_yield', 'entry_yield', 'discount_rate', 
+                                  'downtime', 'renewal_prob', 'ltv', 'interest_rate', 'capex', 'opex_ratio']
+                    if key in valid_keys:
+                         updated[key] = float(value)
+                         
+    except Exception as e:
+        print(f"[WARNING] LLM assumption parsing failed: {e}. Falling back to regex.")
+        # Fallback to original regex logic if LLM fails
+        return _process_assumption_updates_regex(updated, user_input)
+
+    return updated
+
+def _process_assumption_updates_regex(current_assumptions: dict, user_input: str) -> dict:
+    """
+    Fallback regex-based parser.
+    """
+    updated = current_assumptions.copy()
     user_input_lower = user_input.lower().replace("_", " ")
 
     # Helper to extract percentage (returns float 0.05 for 5%)
@@ -43,8 +104,6 @@ def process_assumption_updates(current_assumptions: dict, user_input: str) -> di
 
     # 4. ERV (Rent)
     if "erv" in user_input_lower or "market rent" in user_input_lower:
-        # Look for number near the keyword, potentially ignoring "€"
-        # Simple extraction for now
         val = extract_number(user_input_lower.split("erv")[-1] if "erv" in user_input_lower else user_input_lower)
         if val is not None:
             updated["erv"] = val
@@ -86,6 +145,7 @@ def process_assumption_updates(current_assumptions: dict, user_input: str) -> di
             updated["interest_rate"] = val
 
     return updated
+
 
 def fetch_default_assumptions(asset_type: str = "Logistics") -> dict:
     """

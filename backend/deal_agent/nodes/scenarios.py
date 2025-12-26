@@ -5,6 +5,33 @@ from deal_agent.tools.excel_engine import fill_excel_named_ranges, write_list_to
 from deal_agent.tools.s3_utils import upload_to_s3_and_get_link
 import os
 import time
+from langchain_openai import ChatOpenAI
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.output_parsers import JsonOutputParser
+
+def parse_scenario_parameters(message: str):
+    """
+    Uses LLM to extract scenario parameters from natural language.
+    """
+    try:
+        llm = ChatOpenAI(model="gpt-4o", temperature=0)
+        prompt = ChatPromptTemplate.from_messages([
+            ("system", 
+             "You are a financial modeling assistant. Extract scenario assumptions from the user's message. "
+             "Look for changes in 'Market Rent' (ERV) and 'Exit Yield' (Cap Rate). "
+             "Return a JSON object with exactly these keys:\n"
+             "- 'erv_change_pct': float (e.g., -0.05 for -5%, 0.05 for +5%). Default to 0 if not found.\n"
+             "- 'exit_yield_change_bps': float (e.g., 25 for +25bps, -10 for -10bps). Default to 0 if not found.\n"
+             "Do not include markdown formatting like ```json.\n"
+             "IMPORTANT: If the user provides a list of changes (e.g. 'ERV +5%, Exit Yield -25 bps'), extract ALL of them."
+            ),
+            ("user", "{message}")
+        ])
+        chain = prompt | llm | JsonOutputParser()
+        return chain.invoke({"message": message})
+    except Exception as e:
+        print(f"[WARNING] LLM parsing failed: {e}")
+        return {"erv_change_pct": 0, "exit_yield_change_bps": 0}
 
 def prepare_scenario_analysis(state: DealState):
     """
@@ -21,8 +48,14 @@ def apply_scenario(state: DealState):
     """
     print("--- Node: Apply Scenario ---")
     
-    # Extract scenario from last message (simplified)
-    last_msg = state["messages"][-1].content
+    # Extract scenario from last HUMAN message
+    last_msg = ""
+    for msg in reversed(state["messages"]):
+        if msg.type == "human" or getattr(msg, "role", "") == "user":
+            last_msg = msg.content
+            break
+            
+    print(f"[DEBUG] apply_scenario captured message: '{last_msg}'")
     
     # Ensure last_msg is a string before calling lower()
     if isinstance(last_msg, list):
@@ -62,7 +95,16 @@ def rebuild_model_for_scenario(state: DealState):
     print("--- Node: Rebuild Model for Scenario ---")
     
     scenario_name = state.get("current_scenario", "Scenario")
-    user_message = state.get("scenario_user_message", "").lower()
+    user_message = state.get("scenario_user_message", "")
+    
+    # Fallback: If empty, try to find the last user message again
+    if not user_message:
+        for msg in reversed(state["messages"]):
+            if msg.type == "human" or getattr(msg, "role", "") == "user":
+                user_message = str(msg.content)
+                break
+    
+    user_message = user_message.lower()
     
     # Get base model metrics (saved before applying scenario)
     base_model = state.get("financial_model", {})
@@ -76,8 +118,55 @@ def rebuild_model_for_scenario(state: DealState):
     
     adjustments_applied = []
     
-    # Parse user message for specific adjustments or apply defaults
-    if "downside" in scenario_name.lower():
+    # 1. Try to parse specific parameters using LLM (Semantic Parsing)
+    print(f"[DEBUG] Parsing scenario message: '{user_message}'")
+    parsed_params = parse_scenario_parameters(user_message)
+    print(f"[DEBUG] LLM Parsed params: {parsed_params}")
+    
+    erv_change = parsed_params.get("erv_change_pct", 0)
+    yield_change_bps = parsed_params.get("exit_yield_change_bps", 0)
+    
+    # Fallback: If LLM returned 0s, try simple regex for common patterns
+    if erv_change == 0 and yield_change_bps == 0:
+        import re
+        # Regex for ERV/Rent (Improved to handle spaces)
+        # Matches: "erv + 5 %", "rent -5%", "erv 5%"
+        erv_match = re.search(r"(?:erv|rent).*?([+-]?\s*\d+(?:\.\d+)?)\s*%", user_message)
+        if erv_match:
+            # Remove spaces from the number string (e.g. "+ 5" -> "+5")
+            val_str = erv_match.group(1).replace(" ", "")
+            erv_change = float(val_str) / 100.0
+            print(f"[DEBUG] Regex found ERV change: {erv_change}")
+            
+        # Regex for Exit Yield (Improved to handle spaces)
+        # Matches: "exit yield + 25 bps", "cap rate -0.25 %"
+        yield_match = re.search(r"(?:exit|yield|cap).*?([+-]?\s*\d+(?:\.\d+)?)\s*(bps|%)", user_message)
+        if yield_match:
+            val_str = yield_match.group(1).replace(" ", "")
+            val = float(val_str)
+            unit = yield_match.group(2)
+            if unit == "bps":
+                yield_change_bps = val
+            else:
+                yield_change_bps = val * 100
+            print(f"[DEBUG] Regex found Yield change bps: {yield_change_bps}")
+    
+    # Force custom params if regex found something, even if LLM failed
+    has_custom_params = (erv_change != 0 or yield_change_bps != 0)
+    
+    if has_custom_params:
+        # Apply parsed custom values (Overrides named scenario defaults)
+        if erv_change != 0:
+            scenario_assumptions["erv"] = scenario_assumptions.get("erv", 85) * (1 + erv_change)
+            adjustments_applied.append(f"ERV {erv_change*100:+.1f}%")
+            
+        if yield_change_bps != 0:
+            current_exit = scenario_assumptions.get("exit_yield", 0.0475)
+            scenario_assumptions["exit_yield"] = current_exit + (yield_change_bps / 10000.0)
+            adjustments_applied.append(f"Exit Yield {yield_change_bps:+.0f}bps")
+            
+    # 2. If no specific parameters found, fall back to named scenario defaults
+    elif "downside" in scenario_name.lower():
         # Downside: reduce market rent by 5%, increase exit yield by 25 bps
         scenario_assumptions["erv"] = scenario_assumptions.get("erv", 85) * 0.95
         current_exit = scenario_assumptions.get("exit_yield", 0.0475)
@@ -99,8 +188,7 @@ def rebuild_model_for_scenario(state: DealState):
         adjustments_applied.append("ERV -10%, Exit Yield +50bps")
     
     else:
-        # For Custom Scenario, try to parse specific parameters from message
-        # Default to a modest downside if no specific instructions
+        # Default fallback for Custom Scenario if no numbers were parsed
         scenario_assumptions["erv"] = scenario_assumptions.get("erv", 85) * 0.97
         current_exit = scenario_assumptions.get("exit_yield", 0.0475)
         scenario_assumptions["exit_yield"] = current_exit + 0.0010  # +10 bps
