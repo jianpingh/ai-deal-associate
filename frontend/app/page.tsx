@@ -289,7 +289,7 @@ export default function Home() {
             </button>
           </div>
           <div className="mt-2 text-xs text-center text-gray-500">
-            GoCanopy – AI-driven Real Estate platform for investment analysis.
+            GoCanopy – AI-Powered Real Estate platform for investment analysis.
           </div>
         </div>
       </div>
