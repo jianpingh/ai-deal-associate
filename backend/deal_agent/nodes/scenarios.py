@@ -5,6 +5,7 @@ from deal_agent.tools.excel_engine import fill_excel_named_ranges, write_list_to
 from deal_agent.tools.s3_utils import upload_to_s3_and_get_link
 import os
 import time
+from datetime import datetime
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
@@ -259,16 +260,16 @@ def rebuild_model_for_scenario(state: DealState):
             fill_excel_named_ranges.invoke({"file_path": template_path, "data": excel_inputs})
             
             # Upload to S3
-            timestamp = int(time.time())
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             deal_id = state.get("deal_id", "temp")
             # Sanitize scenario name for filename
             safe_scenario_name = "".join([c if c.isalnum() else "_" for c in scenario_name])
-            s3_object_name = f"financial_models/model_{deal_id}_{safe_scenario_name}_{timestamp}.xlsx"
+            s3_object_name = f"financial_models/Financial_Model_{safe_scenario_name}_{timestamp}.xlsx"
             
             s3_url = upload_to_s3_and_get_link(template_path, s3_object_name)
             
             if s3_url:
-                download_link = f"📥 **[Download Financial Model (Excel)]({s3_url})**"
+                download_link = f"📥 **[Download Financial_Model (Excel)]({s3_url})**"
     except Exception as e:
         print(f"Error generating scenario Excel: {e}")
 
@@ -294,6 +295,7 @@ def rebuild_model_for_scenario(state: DealState):
         f"- 10-year leveraged IRR: {scenario_irr_pct} (vs Base {base_irr_pct}, {irr_delta_bps:+.0f} bps)\n"
         f"- Equity multiple: {scenario_em_fmt} (vs Base {base_em_fmt}, {em_delta:+.2f}x)\n"
         f"- Yield on cost at stabilisation: {scenario_yoc_pct} (vs Base {base_yoc_pct})\n\n"
+        f"The financial model has been updated.\n\n"
         f"{download_link}\n\n"
         f"{insight}"
     )
