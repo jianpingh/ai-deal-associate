@@ -236,7 +236,7 @@ def refresh_deck_views(state: DealState):
     # In a real app, we would pull the specific scenario results from state['scenarios'][scenario_name]
     # For now, we assume the 'financial_model' in state reflects the LATEST run (which is the scenario)
     extracted = state.get("extracted_data", {})
-    assumptions = state.get("assumptions", {})
+    assumptions = state.get("financial_assumptions", {})
     model = state.get("financial_model", {})
     
     # Tenancy Logic (Same as Base)
@@ -282,6 +282,18 @@ def refresh_deck_views(state: DealState):
         except:
             return "N/A"
 
+    # Prepare robust values for replacements
+    print(f"[DEBUG] Refresh Deck Views - Assumptions: {assumptions}")
+    print(f"[DEBUG] Refresh Deck Views - Model: {model}")
+    
+    entry_yield_val = float(assumptions.get('entry_yield') or 0)
+    if entry_yield_val == 0:
+        entry_yield_val = 0.045
+        
+    exit_yield_val = float(assumptions.get('exit_yield') or 0)
+    if exit_yield_val == 0:
+        exit_yield_val = 0.0475
+
     replacements = {
         "{{DEAL_NAME}}": state.get("company_name", "Project Deal") or "Project Deal",
         "{{DATE}}": datetime.now().strftime("%Y-%m-%d"),
@@ -292,10 +304,10 @@ def refresh_deck_views(state: DealState):
         "{{BUSINESS_PLAN_BULLETS}}": bp_text,
         "{{SENSITIVITY_ANALYSIS}}": sens_text,
         "{{APPENDIX_BULLETS}}": app_text,
-        "{{ENTRY_YIELD}}": f"{assumptions.get('entry_yield', 0):.2%}",
+        "{{ENTRY_YIELD}}": f"{entry_yield_val:.2%}",
         "{{IRR}}": safe_format_percent(model.get('irr')),
         "{{MOIC}}": safe_format_float(model.get('equity_multiple')),
-        "{{EXIT_YIELD}}": f"{assumptions.get('exit_yield', 0):.2%}",
+        "{{EXIT_YIELD}}": f"{exit_yield_val:.2%}",
         "{{MARKET_RENT}}": f"{assumptions.get('market_rent', 0)}",
     }
 

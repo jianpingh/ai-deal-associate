@@ -117,6 +117,12 @@ def rebuild_model_for_scenario(state: DealState):
     current_assumptions = state.get("financial_assumptions", {})
     scenario_assumptions = current_assumptions.copy()
     
+    # Sync keys for consistency (Ensure 'erv' and 'market_rent' are aligned)
+    if "market_rent" in scenario_assumptions and "erv" not in scenario_assumptions:
+        scenario_assumptions["erv"] = scenario_assumptions["market_rent"]
+    if "erv" in scenario_assumptions and "market_rent" not in scenario_assumptions:
+        scenario_assumptions["market_rent"] = scenario_assumptions["erv"]
+    
     adjustments_applied = []
     
     # 1. Try to parse specific parameters using LLM (Semantic Parsing)
@@ -197,7 +203,12 @@ def rebuild_model_for_scenario(state: DealState):
     
     print(f"[DEBUG] Applied adjustments: {adjustments_applied}")
     
+    # Sync back market_rent for deck generation
+    if "erv" in scenario_assumptions:
+        scenario_assumptions["market_rent"] = scenario_assumptions["erv"]
+    
     # Recalculate metrics with scenario assumptions
+    metrics = {}
     try:
         inputs = get_model_inputs(scenario_assumptions)
         metrics = calculate_simple_metrics(inputs)
@@ -212,6 +223,7 @@ def rebuild_model_for_scenario(state: DealState):
         scenario_irr = 0
         scenario_em = 0
         scenario_yoc = 0
+        metrics = {"irr": 0, "equity_multiple": 0, "yield_on_cost": 0}
 
     # --- Product Logic: Calculate Deltas & Generate Insights ---
 
@@ -300,7 +312,11 @@ def rebuild_model_for_scenario(state: DealState):
         f"{insight}"
     )
     
-    return {"messages": [AIMessage(content=response_content, name="agent")]}
+    return {
+        "messages": [AIMessage(content=response_content, name="agent")],
+        "financial_model": metrics,
+        "financial_assumptions": scenario_assumptions
+    }
 
 def wait_for_more_scenarios(state: DealState):
     """
