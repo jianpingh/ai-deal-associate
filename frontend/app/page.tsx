@@ -212,6 +212,11 @@ export default function Home() {
                                         components={{
                                             a: ({ node, ...props }: any) => (
                                                 <a {...props} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer" />
+                                            ),
+                                            pre: ({ node, ...props }: any) => (
+                                                <div className="w-full my-2 overflow-hidden rounded-lg bg-white border border-gray-200">
+                                                    <pre {...props} className="p-3 overflow-x-auto font-mono text-xs text-gray-800" />
+                                                </div>
                                             )
                                         }}
                                     >
@@ -252,6 +257,19 @@ export default function Home() {
                                         target="_blank" 
                                         rel="noopener noreferrer" 
                                     />
+                                ),
+                                pre: ({ node, ...props }: any) => (
+                                    <div className="w-full my-4 overflow-hidden rounded-lg bg-gray-50 border border-gray-200">
+                                        <div className="flex items-center justify-between px-4 py-2 bg-gray-100 border-b border-gray-200">
+                                            <div className="flex space-x-2">
+                                                <div className="w-3 h-3 bg-red-400 rounded-full" />
+                                                <div className="w-3 h-3 bg-yellow-400 rounded-full" />
+                                                <div className="w-3 h-3 bg-green-400 rounded-full" />
+                                            </div>
+                                            <span className="text-xs text-gray-500 font-medium">Code</span>
+                                        </div>
+                                        <pre {...props} className="p-4 overflow-x-auto font-mono text-sm text-gray-800" />
+                                    </div>
                                 )
                             }}
                         >
