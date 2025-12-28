@@ -254,8 +254,6 @@ export default function Home() {
                                     <a 
                                         {...props} 
                                         className={`${msg.role === "user" ? "text-white underline decoration-white/50 hover:decoration-white" : "text-gray-900 underline"}`} 
-                                        target="_blank" 
-                                        rel="noopener noreferrer" 
                                     />
                                 ),
                                 pre: ({ node, ...props }: any) => (

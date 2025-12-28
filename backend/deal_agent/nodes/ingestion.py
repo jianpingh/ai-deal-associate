@@ -324,13 +324,13 @@ def compute_metrics_and_draft_summary(state: DealState):
     Compute or extract the following key metrics. Keep it brief (bullet points).
 
     **Output Format:**
-    Compute Metrics and Deal Summary:
-    - Total GLA: [Value]
-    - Occupancy: [Value]
-    - WALT: [Value]
-    - In-Place Rent: [Value]
-    - Key Highlight 1: [Brief text]
-    - Key Highlight 2: [Brief text]
+    ### Compute Metrics and Deal Summary
+    - **Total GLA**: [Value]
+    - **Occupancy**: [Value]
+    - **WALT**: [Value]
+    - **In-Place Rent**: [Value]
+    - **Key Highlight 1**: [Brief text]
+    - **Key Highlight 2**: [Brief text]
     """
 
     response = llm.invoke([HumanMessage(content=prompt)])

@@ -106,6 +106,15 @@ def generate_deck(state: DealState):
         except:
             return "N/A"
 
+    # Prepare robust values for replacements
+    entry_yield_val = float(assumptions.get('entry_yield') or 0)
+    if entry_yield_val == 0:
+        entry_yield_val = 0.045
+        
+    exit_yield_val = float(assumptions.get('exit_yield') or 0)
+    if exit_yield_val == 0:
+        exit_yield_val = 0.0475
+
     replacements = {
         "{{DEAL_NAME}}": state.get("company_name", "Project Deal") or "Project Deal",
         "{{DATE}}": datetime.now().strftime("%Y-%m-%d"),
@@ -116,10 +125,10 @@ def generate_deck(state: DealState):
         "{{BUSINESS_PLAN_BULLETS}}": bp_text,
         "{{SENSITIVITY_ANALYSIS}}": sens_text,
         "{{APPENDIX_BULLETS}}": app_text,
-        "{{ENTRY_YIELD}}": f"{float(assumptions.get('entry_yield') or 0.045):.2%}",
+        "{{ENTRY_YIELD}}": f"{entry_yield_val:.2%}",
         "{{IRR}}": safe_format_percent(model.get('irr')),
         "{{MOIC}}": safe_format_float(model.get('em') or model.get('equity_multiple')),
-        "{{EXIT_YIELD}}": f"{float(assumptions.get('exit_yield') or 0.0475):.2%}",
+        "{{EXIT_YIELD}}": f"{exit_yield_val:.2%}",
         "{{MARKET_RENT}}": f"{assumptions.get('market_rent', 85)}",
     }
 
