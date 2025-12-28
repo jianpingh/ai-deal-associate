@@ -291,9 +291,9 @@ def rebuild_model_for_scenario(state: DealState):
         f"**Assumptions Applied:**\n"
         f"{adjustments_str}\n\n"
         f"**Key Outcomes:**\n"
-        f"- 10-Year Leveraged IRR: {scenario_irr_pct} (vs Base {base_irr_pct}, {irr_delta_bps:+.0f} bps)\n"
-        f"- Equity Multiple: {scenario_em_fmt} (vs Base {base_em_fmt}, {em_delta:+.2f}x)\n"
-        f"- Yield on Cost: {scenario_yoc_pct} (vs Base {base_yoc_pct})\n\n"
+        f"- 10-year leveraged IRR: {scenario_irr_pct} (vs Base {base_irr_pct}, {irr_delta_bps:+.0f} bps)\n"
+        f"- Equity multiple: {scenario_em_fmt} (vs Base {base_em_fmt}, {em_delta:+.2f}x)\n"
+        f"- Yield on cost at stabilisation: {scenario_yoc_pct} (vs Base {base_yoc_pct})\n\n"
         f"{download_link}\n\n"
         f"{insight}"
     )

@@ -208,7 +208,15 @@ export default function Home() {
                                     System Log
                                 </div>
                                 <div className="prose prose-sm max-w-none text-gray-700">
-                                    <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                    <ReactMarkdown
+                                        components={{
+                                            a: ({ node, ...props }: any) => (
+                                                <a {...props} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer" />
+                                            )
+                                        }}
+                                    >
+                                        {msg.content}
+                                    </ReactMarkdown>
                                 </div>
                             </div>
                         </div>
@@ -235,7 +243,20 @@ export default function Home() {
                       }`}
                     >
                       <div className={`prose max-w-none ${msg.role === "user" ? "prose-invert" : ""}`}>
-                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                        <ReactMarkdown
+                            components={{
+                                a: ({ node, ...props }: any) => (
+                                    <a 
+                                        {...props} 
+                                        className={`${msg.role === "user" ? "text-white underline decoration-white/50 hover:decoration-white" : "text-gray-900 underline"}`} 
+                                        target="_blank" 
+                                        rel="noopener noreferrer" 
+                                    />
+                                )
+                            }}
+                        >
+                            {msg.content}
+                        </ReactMarkdown>
                       </div>
                     </div>
                     {msg.role === "user" && (
