@@ -4,6 +4,7 @@ from deal_agent.tools.excel_engine import fill_excel_named_ranges, write_list_to
 from deal_agent.tools.s3_utils import upload_to_s3_and_get_link
 import os
 import time
+from datetime import datetime
 import math
 import numpy_financial as npf
 
@@ -250,10 +251,10 @@ def build_model(state: DealState):
         
         # Upload to S3
         try:
-            timestamp = int(time.time())
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             # Use deal_id if available, else 'temp'
             deal_id = state.get("deal_id", "temp")
-            s3_object_name = f"financial_models/model_{deal_id}_{timestamp}.xlsx"
+            s3_object_name = f"financial_models/Financial_Model_{timestamp}.xlsx"
             
             s3_url = upload_to_s3_and_get_link(template_path, s3_object_name)
             

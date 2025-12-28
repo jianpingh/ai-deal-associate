@@ -148,7 +148,7 @@ def generate_deck(state: DealState):
                             replace_text(cell.text_frame, replacements)
 
     # Save locally with timestamp
-    filename = f"IC_Deck_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pptx"
+    filename = f"IC_Deck_v1_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pptx"
     output_path = os.path.join(output_dir, filename)
     
     s3_link = None
@@ -312,7 +312,7 @@ def refresh_deck_views(state: DealState):
                             replace_text(cell.text_frame, replacements)
 
     # Save locally
-    filename = f"IC_Deck_v{version}_{scenario_name.replace(' ', '_')}_{datetime.now().strftime('%H%M%S')}.pptx"
+    filename = f"IC_Deck_v{version}_Scenario_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pptx"
     output_dir = os.path.join(backend_dir, "data", "generated")
     os.makedirs(output_dir, exist_ok=True)
     output_path = os.path.join(output_dir, filename)
