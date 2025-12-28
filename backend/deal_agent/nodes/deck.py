@@ -174,7 +174,7 @@ def generate_deck(state: DealState):
     status_content = (
         "System Processing:\n"
         "- Generated PPTX from template\n"
-        f"- Uploaded to S3: {filename}"
+        f"- Securely stored: {filename}"
     )
     
     response_content = (

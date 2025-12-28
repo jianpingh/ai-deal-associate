@@ -271,7 +271,11 @@ def align_with_llm(state: DealState):
        - 'physical_specs': Extract Clear Height, Floor Loading, Dock Doors if available.
     3. **Verify**: Check if the GLA (Gross Leasable Area) and Occupancy in the JSON match the PDF. If different, create a 'discrepancies' field.
 
-    Return a summary of the aligned deal data in a readable format for the user, highlighting the key metrics and any discrepancies found.
+    **Output Requirements:**
+    - Return a professional summary of the aligned deal data.
+    - **Do NOT use placeholders** like "[Insert value]". If a value is missing, state "Not specified" or omit the line.
+    - **Discrepancies**: If found, describe them clearly in natural language (e.g., "The PDF states the area is 10,000 sqm, while the system record shows 9,500 sqm"). Do not use technical formats like "JSON - X, PDF - Y".
+    - Ensure the tone is suitable for an Investment Committee memo.
     """
 
     response = llm.invoke([HumanMessage(content=prompt)])
@@ -320,7 +324,7 @@ def compute_metrics_and_draft_summary(state: DealState):
     Compute or extract the following key metrics. Keep it brief (bullet points).
 
     **Output Format:**
-    Compute Metrics and Draft Summary:
+    Compute Metrics and Deal Summary:
     - Total GLA: [Value]
     - Occupancy: [Value]
     - WALT: [Value]
