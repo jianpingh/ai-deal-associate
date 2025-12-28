@@ -413,7 +413,7 @@ def compute_metrics_and_draft_summary(state: DealState):
             os.remove(output_path)
         
         if s3_link:
-            ppt_link_msg = f"\n\n\n📥 **[Download Deal Summary (PPT)]({s3_link})**"
+            ppt_link_msg = f"\n\n\n📥 **[Download Deal Summary]({s3_link})**"
         else:
             ppt_link_msg = f"\n\n(PPT generated locally at {output_path}, but S3 upload failed - check AWS credentials)"
             

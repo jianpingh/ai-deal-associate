@@ -269,7 +269,7 @@ def rebuild_model_for_scenario(state: DealState):
             s3_url = upload_to_s3_and_get_link(template_path, s3_object_name)
             
             if s3_url:
-                download_link = f"📥 **[Download Financial_Model (Excel)]({s3_url})**"
+                download_link = f"📥 **[Download Financial_Model]({s3_url})**"
     except Exception as e:
         print(f"Error generating scenario Excel: {e}")
 
@@ -295,7 +295,7 @@ def rebuild_model_for_scenario(state: DealState):
         f"- 10-year leveraged IRR: {scenario_irr_pct} (vs Base {base_irr_pct}, {irr_delta_bps:+.0f} bps)\n"
         f"- Equity multiple: {scenario_em_fmt} (vs Base {base_em_fmt}, {em_delta:+.2f}x)\n"
         f"- Yield on cost at stabilisation: {scenario_yoc_pct} (vs Base {base_yoc_pct})\n\n"
-        f"The financial model has been updated.\n\n"
+        f"The financial model has been rebuilt.\n\n"
         f"{download_link}\n\n"
         f"{insight}"
     )

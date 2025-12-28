@@ -259,7 +259,7 @@ def build_model(state: DealState):
             s3_url = upload_to_s3_and_get_link(template_path, s3_object_name)
             
             if s3_url:
-                download_link = f"📥 **[Download Financial Model (Excel)]({s3_url})**"
+                download_link = f"📥 **[Download Financial_Model]({s3_url})**"
             else:
                 download_link = "(Upload to S3 failed. Please check AWS credentials.)"
         except Exception as e:

@@ -167,7 +167,7 @@ def generate_deck(state: DealState):
     
     download_msg = ""
     if s3_link:
-        download_msg = f"\n\n📥 **[Download IC Deck (PPT)]({s3_link})**"
+        download_msg = f"\n\n📥 **[Download IC Deck]({s3_link})**"
     else:
         download_msg = f"\n\n(Error: Could not upload deck to S3. Local file might be at {output_path} if not deleted)"
 
@@ -333,7 +333,7 @@ def refresh_deck_views(state: DealState):
 
     download_msg = ""
     if s3_link:
-        download_msg = f"\n\n📥 **[Download IC Deck v{version} ({scenario_name})]({s3_link})**"
+        download_msg = f"\n\n📥 **[Download IC Deck v{version}]({s3_link})**"
     else:
         download_msg = f"\n\n(Deck generated locally at {output_path}, but S3 upload failed)"
     
