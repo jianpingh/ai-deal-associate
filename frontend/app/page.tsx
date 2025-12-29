@@ -13,6 +13,42 @@ interface Message {
   type?: string;
 }
 
+// Helper to group consecutive system logs
+const groupMessages = (msgs: Message[]) => {
+  const grouped: (Message | { type: 'system_log_group', id: string, messages: Message[] })[] = [];
+  let currentLogGroup: Message[] = [];
+
+  msgs.forEach((msg) => {
+    // Filter out empty assistant messages or tool messages (same as original logic)
+    if (msg.role === "assistant" && !msg.content) return;
+    if (msg.role === "tool" || msg.type === "tool") return;
+
+    if (msg.name === "system_log") {
+      currentLogGroup.push(msg);
+    } else {
+      if (currentLogGroup.length > 0) {
+        grouped.push({ 
+            type: 'system_log_group', 
+            id: `group-${currentLogGroup[0].id}`, 
+            messages: [...currentLogGroup] 
+        });
+        currentLogGroup = [];
+      }
+      grouped.push(msg);
+    }
+  });
+
+  if (currentLogGroup.length > 0) {
+    grouped.push({ 
+        type: 'system_log_group', 
+        id: `group-${currentLogGroup[0].id}`, 
+        messages: [...currentLogGroup] 
+    });
+  }
+
+  return grouped;
+};
+
 export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -189,44 +225,51 @@ export default function Home() {
                 </p>
               </div>
             ) : (
-              messages.map((msg) => {
-                if (msg.role === "assistant" && !msg.content) return null;
-                
-                // Hide tool messages or messages with type 'tool'
-                if (msg.role === "tool" || msg.type === "tool") {
-                    return null;
-                }
-                
-                // Special styling for system logs
-                if (msg.name === "system_log") {
+              groupMessages(messages).map((item) => {
+                // Handle System Log Groups
+                if ('type' in item && item.type === 'system_log_group') {
                     return (
-                        <div key={msg.id} className="flex justify-start gap-4 opacity-75">
+                        <div key={item.id} className="flex justify-start gap-4 opacity-75">
                             <div className="w-8 h-8 flex-shrink-0" /> {/* Spacer for alignment */}
-                            <div className="max-w-[80%] rounded-2xl px-6 py-3 bg-gray-50 border border-gray-200 text-gray-600 text-sm">
-                                <div className="flex items-center gap-2 mb-1 text-xs font-semibold uppercase tracking-wider text-blue-600">
+                            <div className="max-w-[80%] rounded-2xl px-6 py-4 bg-gray-50 border border-gray-200 text-gray-600 text-sm shadow-sm">
+                                <div className="flex items-center gap-2 mb-3 text-xs font-bold uppercase tracking-wider text-blue-600 border-b border-gray-200 pb-2">
                                     <Terminal className="w-3 h-3" />
-                                    System Log
+                                    System Activity
                                 </div>
-                                <div className="prose prose-sm max-w-none text-gray-700">
-                                    <ReactMarkdown
-                                        components={{
-                                            a: ({ node, ...props }: any) => (
-                                                <a {...props} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer" />
-                                            ),
-                                            pre: ({ node, ...props }: any) => (
-                                                <div className="w-full my-2 overflow-hidden rounded-lg bg-white border border-gray-200">
-                                                    <pre {...props} className="p-3 overflow-x-auto font-mono text-xs text-gray-800" />
-                                                </div>
-                                            )
-                                        }}
-                                    >
-                                        {msg.content}
-                                    </ReactMarkdown>
+                                <div className="space-y-3">
+                                    {item.messages.map((msg, idx) => (
+                                        <div key={msg.id} className="relative pl-4 border-l-2 border-blue-100">
+                                            {/* Timeline dot */}
+                                            <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-blue-200" />
+                                            <div className="prose prose-sm max-w-none text-gray-700">
+                                                <ReactMarkdown
+                                                    components={{
+                                                        a: ({ node, ...props }: any) => (
+                                                            <a {...props} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer" />
+                                                        ),
+                                                        pre: ({ node, ...props }: any) => (
+                                                            <div className="w-full my-2 overflow-hidden rounded-lg bg-white border border-gray-200">
+                                                                <pre {...props} className="p-3 overflow-x-auto font-mono text-xs text-gray-800" />
+                                                            </div>
+                                                        ),
+                                                        p: ({ node, ...props }: any) => (
+                                                            <p {...props} className="m-0" />
+                                                        )
+                                                    }}
+                                                >
+                                                    {msg.content}
+                                                </ReactMarkdown>
+                                            </div>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
                     );
                 }
+
+                // Handle Normal Messages
+                const msg = item as Message;
 
                 return (
                   <div
