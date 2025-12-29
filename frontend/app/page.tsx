@@ -295,7 +295,7 @@ export default function Home() {
             ) : (
               groupMessages(messages).map((item) => {
                 // Handle System Log Groups
-                if ('type' in item && item.type === 'system_log_group') {
+                if ('messages' in item) {
                     return <SystemLogGroup key={item.id} items={item.messages} />;
                 }
 

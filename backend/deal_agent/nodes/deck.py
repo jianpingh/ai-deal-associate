@@ -294,11 +294,29 @@ def refresh_deck_views(state: DealState):
     if exit_yield_val == 0:
         exit_yield_val = 0.0475
 
+    # --- NEW: Construct Dynamic Summary Bullets ---
+    irr_val = model.get('irr')
+    em_val = model.get('equity_multiple')
+    yoc_val = model.get('yield_on_cost')
+    
+    irr_fmt = f"{irr_val*100:.1f}%" if irr_val is not None else "N/A"
+    em_fmt = f"{em_val:.2f}x" if em_val is not None else "N/A"
+    yoc_fmt = f"{yoc_val*100:.1f}%" if yoc_val is not None else "N/A"
+
+    summary_bullets = (
+        f"Scenario: {scenario_name}\n"
+        f"• Leveraged IRR: {irr_fmt}\n"
+        f"• Equity Multiple: {em_fmt}\n"
+        f"• Yield on Cost: {yoc_fmt}\n"
+        f"• Entry Yield: {entry_yield_val:.2%}\n"
+        f"• Exit Yield: {exit_yield_val:.2%}"
+    )
+
     replacements = {
         "{{DEAL_NAME}}": state.get("company_name", "Project Deal") or "Project Deal",
         "{{DATE}}": datetime.now().strftime("%Y-%m-%d"),
         "{{SCENARIO_LABEL}}": f"Scenario {label}",
-        "{{SUMMARY_BULLETS}}": f"Scenario Analysis: {scenario_name}\nComparison vs Base Case...",
+        "{{SUMMARY_BULLETS}}": summary_bullets,
         "{{MARKET_BULLETS}}": extracted.get("market_highlights", "Market data not available."),
         "{{TENANCY_BULLETS}}": tenancy_text,
         "{{BUSINESS_PLAN_BULLETS}}": bp_text,
