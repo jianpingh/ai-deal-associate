@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { client } from "@/lib/client";
-import { Send, Bot, User, Loader2, PlusCircle, Terminal } from "lucide-react";
+import { Send, Bot, User, Loader2, PlusCircle, Terminal, ChevronDown, ChevronRight } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 interface Message {
@@ -12,6 +12,74 @@ interface Message {
   name?: string;
   type?: string;
 }
+
+const SystemLogGroup = ({ items }: { items: Message[] }) => {
+  const [isOpen, setIsOpen] = useState(true);
+
+  return (
+    <div className="flex justify-start gap-4 opacity-90 group">
+      <div className="w-8 h-8 flex-shrink-0" /> {/* Spacer */}
+      <div className="max-w-[80%] rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden transition-all duration-200">
+        {/* Header - Clickable for toggle */}
+        <button 
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-gray-100 hover:bg-gray-100 transition-colors"
+        >
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+            <Terminal className="w-3.5 h-3.5" />
+            System Activity
+          </div>
+          {isOpen ? <ChevronDown className="w-3.5 h-3.5 text-gray-400" /> : <ChevronRight className="w-3.5 h-3.5 text-gray-400" />}
+        </button>
+
+        {/* Content - Collapsible */}
+        {isOpen && (
+          <div className="px-5 py-3 bg-white">
+            <div className="relative">
+              {/* Continuous vertical line */}
+              <div className="absolute left-[7px] top-2 bottom-2 w-[2px] bg-gray-100" />
+              
+              <div className="space-y-2">
+                {items.flatMap((msg) => 
+                    msg.content.split('\n')
+                        .filter(line => line.trim())
+                        .map((line, lineIdx) => ({
+                            id: `${msg.id}-${lineIdx}`,
+                            content: line
+                        }))
+                ).map((lineItem, idx) => (
+                    <div key={lineItem.id} className="relative flex items-start gap-3">
+                        {/* Icon/Dot wrapper */}
+                        <div className="flex-shrink-0 w-4 h-5 flex items-center justify-center z-10">
+                            <div className="w-2 h-2 rounded-full bg-gray-200" />
+                        </div>
+                        <div className="prose prose-sm max-w-none text-gray-600 text-xs leading-snug">
+                            <ReactMarkdown
+                                components={{
+                                    a: ({ node, ...props }: any) => (
+                                        <a {...props} className="text-blue-600 hover:underline font-medium" target="_blank" rel="noopener noreferrer" />
+                                    ),
+                                    strong: ({ node, ...props }: any) => (
+                                        <span {...props} className="font-semibold text-gray-800" />
+                                    ),
+                                    p: ({ node, ...props }: any) => (
+                                        <p {...props} className="m-0" />
+                                    )
+                                }}
+                            >
+                                {lineItem.content}
+                            </ReactMarkdown>
+                        </div>
+                    </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 // Helper to group consecutive system logs
 const groupMessages = (msgs: Message[]) => {
@@ -228,51 +296,7 @@ export default function Home() {
               groupMessages(messages).map((item) => {
                 // Handle System Log Groups
                 if ('type' in item && item.type === 'system_log_group') {
-                    return (
-                        <div key={item.id} className="flex justify-start gap-4 opacity-75">
-                            <div className="w-8 h-8 flex-shrink-0" /> {/* Spacer for alignment */}
-                            <div className="max-w-[80%] rounded-2xl px-6 py-4 bg-gray-50 border border-gray-200 text-gray-600 text-sm shadow-sm">
-                                <div className="flex items-center gap-2 mb-3 text-xs font-bold uppercase tracking-wider text-blue-600 border-b border-gray-200 pb-2">
-                                    <Terminal className="w-3 h-3" />
-                                    System Activity
-                                </div>
-                                <div className="ml-2 border-l-2 border-blue-100 pl-6 py-2 space-y-2">
-                                    {item.messages.flatMap((msg) => 
-                                        msg.content.split('\n')
-                                            .filter(line => line.trim())
-                                            .map((line, lineIdx) => ({
-                                                id: `${msg.id}-${lineIdx}`,
-                                                content: line
-                                            }))
-                                    ).map((lineItem, idx) => (
-                                        <div key={lineItem.id} className="relative">
-                                            {/* Timeline dot */}
-                                            <div className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full border-2 border-white bg-blue-200" />
-                                            <div className="prose prose-sm max-w-none text-gray-700">
-                                                <ReactMarkdown
-                                                    components={{
-                                                        a: ({ node, ...props }: any) => (
-                                                            <a {...props} className="text-blue-600 hover:underline" target="_blank" rel="noopener noreferrer" />
-                                                        ),
-                                                        pre: ({ node, ...props }: any) => (
-                                                            <div className="w-full my-2 overflow-hidden rounded-lg bg-white border border-gray-200">
-                                                                <pre {...props} className="p-3 overflow-x-auto font-mono text-xs text-gray-800" />
-                                                            </div>
-                                                        ),
-                                                        p: ({ node, ...props }: any) => (
-                                                            <p {...props} className="m-0" />
-                                                        )
-                                                    }}
-                                                >
-                                                    {lineItem.content}
-                                                </ReactMarkdown>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    );
+                    return <SystemLogGroup key={item.id} items={item.messages} />;
                 }
 
                 // Handle Normal Messages
