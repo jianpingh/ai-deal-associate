@@ -236,11 +236,18 @@ export default function Home() {
                                     <Terminal className="w-3 h-3" />
                                     System Activity
                                 </div>
-                                <div className="space-y-3">
-                                    {item.messages.map((msg, idx) => (
-                                        <div key={msg.id} className="relative pl-4 border-l-2 border-blue-100">
+                                <div className="ml-2 border-l-2 border-blue-100 pl-6 py-2 space-y-2">
+                                    {item.messages.flatMap((msg) => 
+                                        msg.content.split('\n')
+                                            .filter(line => line.trim())
+                                            .map((line, lineIdx) => ({
+                                                id: `${msg.id}-${lineIdx}`,
+                                                content: line
+                                            }))
+                                    ).map((lineItem, idx) => (
+                                        <div key={lineItem.id} className="relative">
                                             {/* Timeline dot */}
-                                            <div className="absolute -left-[5px] top-1.5 w-2 h-2 rounded-full bg-blue-200" />
+                                            <div className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full border-2 border-white bg-blue-200" />
                                             <div className="prose prose-sm max-w-none text-gray-700">
                                                 <ReactMarkdown
                                                     components={{
@@ -257,7 +264,7 @@ export default function Home() {
                                                         )
                                                     }}
                                                 >
-                                                    {msg.content}
+                                                    {lineItem.content}
                                                 </ReactMarkdown>
                                             </div>
                                         </div>
