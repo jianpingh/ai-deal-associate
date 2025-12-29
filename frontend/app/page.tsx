@@ -42,7 +42,7 @@ const SystemLogGroup = ({ items }: { items: Message[] }) => {
               <div className="space-y-2">
                 {items.flatMap((msg) => 
                     msg.content.split('\n')
-                        .filter(line => line.trim())
+                        .filter(line => line.trim() && line.trim() !== "System Processing:")
                         .map((line, lineIdx) => ({
                             id: `${msg.id}-${lineIdx}`,
                             content: line
@@ -50,8 +50,8 @@ const SystemLogGroup = ({ items }: { items: Message[] }) => {
                 ).map((lineItem, idx) => (
                     <div key={lineItem.id} className="relative flex items-start gap-3">
                         {/* Icon/Dot wrapper */}
-                        <div className="flex-shrink-0 w-4 h-5 flex items-center justify-center z-10">
-                            <div className="w-2 h-2 rounded-full bg-gray-200" />
+                        <div className="flex-shrink-0 w-4 h-5 flex items-center justify-center z-10 -mt-0.5">
+                            <div className="w-1.5 h-1.5 rounded-full bg-gray-200" />
                         </div>
                         <div className="prose prose-sm max-w-none text-gray-600 text-xs leading-snug">
                             <ReactMarkdown
