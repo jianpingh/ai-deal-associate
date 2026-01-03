@@ -4,6 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import { client } from "@/lib/client";
 import { Send, Bot, User, Loader2, PlusCircle, Terminal, ChevronDown, ChevronRight } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import remarkMath from "remark-math";
+import rehypeKatex from "rehype-katex";
 
 interface Message {
   id: string;
@@ -12,6 +15,14 @@ interface Message {
   name?: string;
   type?: string;
 }
+
+const preprocessLaTeX = (content: string) => {
+  // Replace \[ ... \] with $$ ... $$
+  const blockRep = content.replace(/\\\[/g, '$$').replace(/\\\]/g, '$$');
+  // Replace \( ... \) with $ ... $
+  const inlineRep = blockRep.replace(/\\\(/g, '$').replace(/\\\)/g, '$');
+  return inlineRep;
+};
 
 const SystemLogGroup = ({ items }: { items: Message[] }) => {
   const [isOpen, setIsOpen] = useState(true);
@@ -55,6 +66,8 @@ const SystemLogGroup = ({ items }: { items: Message[] }) => {
                         </div>
                         <div className="prose prose-sm max-w-none text-gray-600 text-xs leading-snug">
                             <ReactMarkdown
+                                remarkPlugins={[remarkGfm, remarkMath]}
+                                rehypePlugins={[rehypeKatex]}
                                 components={{
                                     a: ({ node, ...props }: any) => (
                                         <a {...props} className="text-blue-600 hover:underline font-medium" target="_blank" rel="noopener noreferrer" />
@@ -67,7 +80,7 @@ const SystemLogGroup = ({ items }: { items: Message[] }) => {
                                     )
                                 }}
                             >
-                                {lineItem.content}
+                                {preprocessLaTeX(lineItem.content)}
                             </ReactMarkdown>
                         </div>
                     </div>
@@ -323,12 +336,34 @@ export default function Home() {
                     >
                       <div className={`prose max-w-none ${msg.role === "user" ? "prose-invert" : ""}`}>
                         <ReactMarkdown
+                            remarkPlugins={[remarkGfm, remarkMath]}
+                            rehypePlugins={[rehypeKatex]}
                             components={{
                                 a: ({ node, ...props }: any) => (
                                     <a 
                                         {...props} 
                                         className={`${msg.role === "user" ? "text-white underline decoration-white/50 hover:decoration-white" : "text-gray-900 underline"}`} 
                                     />
+                                ),
+                                table: ({ node, ...props }: any) => (
+                                  <div className="overflow-x-auto my-4">
+                                    <table {...props} className={`min-w-full divide-y ${msg.role === "user" ? "divide-blue-400" : "divide-gray-200"}`} />
+                                  </div>
+                                ),
+                                thead: ({ node, ...props }: any) => (
+                                  <thead {...props} className={msg.role === "user" ? "bg-blue-700" : "bg-gray-100"} />
+                                ),
+                                th: ({ node, ...props }: any) => (
+                                  <th {...props} className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${msg.role === "user" ? "text-blue-100" : "text-gray-500"}`} />
+                                ),
+                                tbody: ({ node, ...props }: any) => (
+                                  <tbody {...props} className={`divide-y ${msg.role === "user" ? "bg-blue-600 divide-blue-400" : "bg-white divide-gray-200"}`} />
+                                ),
+                                tr: ({ node, ...props }: any) => (
+                                  <tr {...props} className={msg.role === "user" ? "hover:bg-blue-500" : "hover:bg-gray-50"} />
+                                ),
+                                td: ({ node, ...props }: any) => (
+                                  <td {...props} className={`px-4 py-3 text-sm whitespace-nowrap ${msg.role === "user" ? "text-white" : "text-gray-700"}`} />
                                 ),
                                 pre: ({ node, ...props }: any) => (
                                     <div className="w-full my-4 overflow-hidden rounded-lg bg-gray-50 border border-gray-200">
@@ -345,7 +380,7 @@ export default function Home() {
                                 )
                             }}
                         >
-                            {msg.content}
+                            {preprocessLaTeX(msg.content)}
                         </ReactMarkdown>
                       </div>
                     </div>

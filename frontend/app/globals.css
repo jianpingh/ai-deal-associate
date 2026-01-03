@@ -31,3 +31,53 @@ body {
     text-wrap: balance;
   }
 }
+
+/* Custom Table Styles for Markdown */
+.prose table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 1em;
+  margin-bottom: 1em;
+}
+
+.prose th,
+.prose td {
+  border: 1px solid #e5e7eb; /* gray-200 */
+  padding: 0.5rem;
+}
+
+.prose th {
+  background-color: #f9fafb; /* gray-50 */
+  font-weight: 600;
+}
+
+/* Dark mode adjustments if needed, though user seems to be using light mode mostly */
+.prose-invert th,
+.prose-invert td {
+  border-color: #374151; /* gray-700 */
+}
+
+.prose-invert th {
+  background-color: #1f2937; /* gray-800 */
+}
+
+/* KaTeX Styles */
+.katex-display {
+  display: block;
+  margin: 1rem 0;
+  text-align: center;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 0.5rem 0;
+  line-height: normal;
+}
+
+.katex {
+  font-size: 1.1em;
+  line-height: normal;
+}
+
+/* Ensure prose doesn't clip KaTeX */
+.prose .katex-display {
+  max-width: 100%;
+}

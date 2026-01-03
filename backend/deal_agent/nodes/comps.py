@@ -31,16 +31,18 @@ def propose_comparables(state: DealState):
     # Calculate blended rent for the proposed set
     blended_rent = calculate_blended_rent(comps_data)
     
-    # Format the list for display
-    comps_list_text = "\n\n".join([
-        f"• {c['name']} – {c['size']}, {c['yield']} yield, €{c['rent']}/m², {c['dist']} away"
+    # Format as Markdown Table
+    table_header = "| Asset Name | Size | Yield | Rent | Distance |\n|:---|:---|:---|:---|:---|\n"
+    table_rows = "".join([
+        f"| {c['name']} | {c['size']} | {c['yield']} | €{c['rent']}/m² | {c['dist']} |\n"
         for c in comps_data
     ])
+    comps_table = table_header + table_rows
     
     response_content = (
         f"I’ve identified {len(all_comps)} internal comparable logistics assets based on location ({location or 'General'}) and specification.\n\n"
-        f"Recommended set ({len(comps_data)}):\n\n"
-        f"{comps_list_text}\n\n"
+        f"**Recommended set ({len(comps_data)}):**\n\n"
+        f"{comps_table}\n"
         f"Current blended market rent from these {len(comps_data)} comps: **€{blended_rent}/m²/year**.\n\n"
         "Please **remove any comps you don’t like or add others**, and I’ll recompute the market rent."
     )
