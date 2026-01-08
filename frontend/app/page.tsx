@@ -346,7 +346,7 @@ export default function Home() {
                                     />
                                 ),
                                 table: ({ node, ...props }: any) => (
-                                  <div className="overflow-x-auto my-4">
+                                  <div className="overflow-x-auto my-0">
                                     <table {...props} className={`min-w-full divide-y ${msg.role === "user" ? "divide-blue-400" : "divide-gray-200"}`} />
                                   </div>
                                 ),

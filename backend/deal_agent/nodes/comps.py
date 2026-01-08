@@ -25,25 +25,53 @@ def propose_comparables(state: DealState):
     # If location is found (e.g. "Daventry"), it will search "Logistics market comparables in Daventry"
     all_comps = fetch_market_comparables(location=location)
     
-    # Simple logic: take top 5 as proposal (Pinecone returns top_k=10)
+    # Logic: take top 5 as proposal, keep the rest as options
     comps_data = all_comps[:5]
+    other_comps = all_comps[5:]
     
     # Calculate blended rent for the proposed set
     blended_rent = calculate_blended_rent(comps_data)
     
     # Format as Markdown Table
+    table_template = "| {name} | {size} | {yield_val} | €{rent}/m² | {dist} |\n"
     table_header = "| Asset Name | Size | Yield | Rent | Distance |\n|:---|:---|:---|:---|:---|\n"
+    
     table_rows = "".join([
-        f"| {c['name']} | {c['size']} | {c['yield']} | €{c['rent']}/m² | {c['dist']} |\n"
-        for c in comps_data
+        table_template.format(
+            name=c['name'], 
+            size=c['size'], 
+            yield_val=c['yield'], 
+            rent=c['rent'], 
+            dist=c['dist']
+        ) for c in comps_data
     ])
     comps_table = table_header + table_rows
     
+    # Format Others Table if available
+    others_section = ""
+    if other_comps:
+        others_rows = "".join([
+            table_template.format(
+                name=c['name'], 
+                size=c['size'], 
+                yield_val=c['yield'], 
+                rent=c['rent'], 
+                dist=c['dist']
+            ) for c in other_comps
+        ])
+        others_section = (
+            f"\n\n**Other Available Comps:**\n"
+            f"{table_header}"
+            f"{others_rows}"
+            "\n"
+        )
+    
     response_content = (
         f"I’ve identified {len(all_comps)} internal comparable logistics assets based on location ({location or 'General'}) and specification.\n\n"
-        f"**Recommended set ({len(comps_data)}):**\n\n"
+        f"**Recommended set ({len(comps_data)}):**\n"
         f"{comps_table}\n"
-        f"Current blended market rent from these {len(comps_data)} comps: **€{blended_rent}/m²/year**.\n\n"
+        f"Current blended market rent from these {len(comps_data)} comps: **€{blended_rent}/m²/year**.\n\n\n"
+        f"{others_section}\n\n"
         "Please **remove any comps you don’t like or add others**, and I’ll recompute the market rent."
     )
     
