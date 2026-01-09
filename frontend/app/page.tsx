@@ -437,7 +437,7 @@ export default function Home() {
             <button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              className="absolute p-1.5 text-white transition-colors bg-[#1a3c54] border-2 border-[#1a3c54] rounded-full right-3 bottom-3 hover:bg-[#153043] disabled:cursor-not-allowed"
+              className="absolute p-1.5 text-white transition-colors bg-[#1a3c54] border-2 border-[#1a3c54] rounded-full right-3 bottom-5 hover:bg-[#153043] disabled:cursor-not-allowed"
             >
               <ArrowUp className="w-5 h-5 stroke-2" />
             </button>
