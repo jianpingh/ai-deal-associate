@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { client } from "@/lib/client";
-import { Send, Bot, User, Loader2, PlusCircle, Terminal, ChevronDown, ChevronRight } from "lucide-react";
+import { Send, Bot, User, Loader2, PlusCircle, Terminal, ChevronDown, ChevronRight, ArrowUp } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
@@ -331,8 +331,8 @@ export default function Home() {
                     }`}
                   >
                     {msg.role === "assistant" && (
-                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-gray-200 bg-white">
-                        <Bot className="w-5 h-5 text-gray-700" />
+                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-[#1a3c54] bg-[#1a3c54]">
+                        <Bot className="w-5 h-5 text-white" />
                       </div>
                     )}
                     <div
@@ -393,8 +393,8 @@ export default function Home() {
                       </div>
                     </div>
                     {msg.role === "user" && (
-                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-gray-200 bg-white">
-                        <User className="w-5 h-5 text-gray-700" />
+                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-[#9ca3af] bg-[#9ca3af]">
+                        <User className="w-5 h-5 text-white" />
                       </div>
                     )}
                   </div>
@@ -403,12 +403,12 @@ export default function Home() {
             )}
             {isLoading && (
               <div className="flex justify-start gap-4">
-                 <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-gray-200 bg-white">
-                      <Bot className="w-5 h-5 text-gray-700" />
+                 <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-[#1a3c54] bg-[#1a3c54]">
+                      <Bot className="w-5 h-5 text-white" />
                     </div>
                 <div className="flex flex-col px-6 py-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
                   <div className="flex items-center">
-                    <Loader2 className="w-5 h-5 mr-2 text-gray-900 animate-spin" />
+                    <Loader2 className="w-5 h-5 mr-2 text-[#1a3c54] animate-spin" />
                     <span className="text-gray-600">Thinking...</span>
                   </div>
                 </div>
@@ -437,9 +437,9 @@ export default function Home() {
             <button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              className="absolute p-2 text-white transition-colors bg-gray-900 rounded-lg right-2 bottom-3 hover:bg-gray-700 disabled:cursor-not-allowed"
+              className="absolute p-1.5 text-white transition-colors bg-[#1a3c54] border-2 border-[#1a3c54] rounded-full right-3 bottom-3 hover:bg-[#153043] disabled:cursor-not-allowed"
             >
-              <Send className="w-4 h-4" />
+              <ArrowUp className="w-5 h-5 stroke-2" />
             </button>
           </div>
           <div className="mt-2 text-xs text-center text-gray-500">
