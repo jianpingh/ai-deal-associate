@@ -408,7 +408,7 @@ export default function Home() {
                     </div>
                 <div className="flex flex-col px-6 py-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
                   <div className="flex items-center">
-                    <Loader2 className="w-5 h-5 mr-2 text-blue-600 animate-spin" />
+                    <Loader2 className="w-5 h-5 mr-2 text-gray-900 animate-spin" />
                     <span className="text-gray-600">Thinking...</span>
                   </div>
                 </div>
@@ -419,7 +419,7 @@ export default function Home() {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <div className="p-4 bg-white">
           <div className="relative max-w-3xl mx-auto">
             <textarea
               value={input}
@@ -431,13 +431,13 @@ export default function Home() {
                 }
               }}
               placeholder="Ask me anything..."
-              className="w-full bg-white text-gray-900 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:ring-0 focus:shadow-none border border-gray-300 resize-none h-[52px] focus:h-32 transition-[height] duration-300 ease-in-out max-h-32 overflow-y-auto"
-              rows={1}
+              className="w-full bg-white text-gray-900 rounded-2xl pl-4 pr-12 py-4 focus:outline-none focus:ring-0 focus:shadow-none border border-gray-200 resize-none h-[96px] max-h-48 overflow-y-auto"
+              rows={3}
             />
             <button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              className="absolute p-2 text-white transition-colors bg-blue-600 rounded-lg right-2 top-2 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              className="absolute p-2 text-white transition-colors bg-gray-900 rounded-lg right-2 bottom-3 hover:bg-gray-700 disabled:cursor-not-allowed"
             >
               <Send className="w-4 h-4" />
             </button>
