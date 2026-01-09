@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { client } from "@/lib/client";
 import { Send, Bot, User, Loader2, PlusCircle, Terminal, ChevronDown, ChevronRight } from "lucide-react";
 import ReactMarkdown from "react-markdown";
@@ -264,12 +265,19 @@ export default function Home() {
   return (
     <div className="flex h-screen font-sans text-gray-900 bg-white">
       {/* Sidebar */}
-      <div className="flex flex-col w-64 bg-gray-50 border-r border-gray-200">
-        <div className="p-4 border-b border-gray-200">
-          <h1 className="flex items-center gap-2 text-xl font-bold text-gray-900">
-            <Bot className="w-6 h-6 text-gray-900" />
-            GoCanopy – AI Deal Associate
-          </h1>
+      <div className="flex flex-col w-64 bg-[#1a3c54] border-r border-[#153043]">
+        <div className="px-6 py-5 border-b border-[#234e6b]">
+          <div className="flex flex-col gap-0.5">
+            <h1 className="relative w-36 h-9 flex-shrink-0 -ml-1">
+               <Image 
+                 src="/logo-ca8d5c4c.svg" 
+                 alt="GoCanopy Logo" 
+                 fill
+                 className="object-contain object-left" 
+               />
+            </h1>
+            <span className="text-[10px] font-semibold text-blue-100 tracking-[0.15em] uppercase pl-0.5 opacity-90">AI Deal Associate</span>
+          </div>
         </div>
         <div className="p-4">
           <button
@@ -323,18 +331,18 @@ export default function Home() {
                     }`}
                   >
                     {msg.role === "assistant" && (
-                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 bg-blue-600 rounded-full">
-                        <Bot className="w-5 h-5 text-white" />
+                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-gray-200 bg-white">
+                        <Bot className="w-5 h-5 text-gray-700" />
                       </div>
                     )}
                     <div
                       className={`max-w-[80%] rounded-2xl px-6 py-4 ${
                         msg.role === "user"
-                          ? "bg-blue-600 text-white"
-                          : "bg-gray-50 text-gray-900 border border-gray-200"
+                          ? "bg-gray-100 text-gray-900"
+                          : "bg-white text-gray-900 border border-gray-200 shadow-sm"
                       }`}
                     >
-                      <div className={`prose max-w-none ${msg.role === "user" ? "prose-invert" : ""}`}>
+                      <div className={`prose max-w-none ${msg.role === "user" ? "" : ""}`}>
                         <ReactMarkdown
                             remarkPlugins={[remarkGfm, remarkMath]}
                             rehypePlugins={[rehypeKatex]}
@@ -342,28 +350,28 @@ export default function Home() {
                                 a: ({ node, ...props }: any) => (
                                     <a 
                                         {...props} 
-                                        className={`${msg.role === "user" ? "text-white underline decoration-white/50 hover:decoration-white" : "text-gray-900 underline"}`} 
+                                        className="text-blue-600 underline hover:text-blue-800" 
                                     />
                                 ),
                                 table: ({ node, ...props }: any) => (
                                   <div className="overflow-x-auto my-0">
-                                    <table {...props} className={`min-w-full divide-y ${msg.role === "user" ? "divide-blue-400" : "divide-gray-200"}`} />
+                                    <table {...props} className="min-w-full divide-y divide-gray-200" />
                                   </div>
                                 ),
                                 thead: ({ node, ...props }: any) => (
-                                  <thead {...props} className={msg.role === "user" ? "bg-blue-700" : "bg-gray-100"} />
+                                  <thead {...props} className="bg-gray-50" />
                                 ),
                                 th: ({ node, ...props }: any) => (
-                                  <th {...props} className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${msg.role === "user" ? "text-blue-100" : "text-gray-500"}`} />
+                                  <th {...props} className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500" />
                                 ),
                                 tbody: ({ node, ...props }: any) => (
-                                  <tbody {...props} className={`divide-y ${msg.role === "user" ? "bg-blue-600 divide-blue-400" : "bg-white divide-gray-200"}`} />
+                                  <tbody {...props} className="bg-white divide-y divide-gray-200" />
                                 ),
                                 tr: ({ node, ...props }: any) => (
-                                  <tr {...props} className={msg.role === "user" ? "hover:bg-blue-500" : "hover:bg-gray-50"} />
+                                  <tr {...props} className="hover:bg-gray-50" />
                                 ),
                                 td: ({ node, ...props }: any) => (
-                                  <td {...props} className={`px-4 py-3 text-sm whitespace-nowrap ${msg.role === "user" ? "text-white" : "text-gray-700"}`} />
+                                  <td {...props} className="px-4 py-3 text-sm whitespace-nowrap text-gray-700" />
                                 ),
                                 pre: ({ node, ...props }: any) => (
                                     <div className="w-full my-4 overflow-hidden rounded-lg bg-gray-50 border border-gray-200">
@@ -385,8 +393,8 @@ export default function Home() {
                       </div>
                     </div>
                     {msg.role === "user" && (
-                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 bg-gray-400 rounded-full">
-                        <User className="w-5 h-5 text-white" />
+                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-gray-200 bg-white">
+                        <User className="w-5 h-5 text-gray-700" />
                       </div>
                     )}
                   </div>
@@ -395,10 +403,10 @@ export default function Home() {
             )}
             {isLoading && (
               <div className="flex justify-start gap-4">
-                 <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 bg-blue-600 rounded-full">
-                      <Bot className="w-5 h-5 text-white" />
+                 <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-gray-200 bg-white">
+                      <Bot className="w-5 h-5 text-gray-700" />
                     </div>
-                <div className="flex flex-col px-6 py-4 bg-gray-50 border border-gray-200 rounded-2xl">
+                <div className="flex flex-col px-6 py-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
                   <div className="flex items-center">
                     <Loader2 className="w-5 h-5 mr-2 text-blue-600 animate-spin" />
                     <span className="text-gray-600">Thinking...</span>
@@ -422,8 +430,8 @@ export default function Home() {
                   sendMessage();
                 }
               }}
-              placeholder="Type your message..."
-              className="w-full bg-white text-gray-900 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-300 resize-none h-[52px] max-h-32 overflow-y-auto"
+              placeholder="Ask me anything..."
+              className="w-full bg-white text-gray-900 rounded-xl pl-4 pr-12 py-3 focus:outline-none focus:ring-0 focus:shadow-none border border-gray-300 resize-none h-[52px] focus:h-32 transition-[height] duration-300 ease-in-out max-h-32 overflow-y-auto"
               rows={1}
             />
             <button
