@@ -300,8 +300,8 @@ export default function Home() {
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex flex-col flex-1">
-        <div className="flex-1 p-4 overflow-y-auto md:p-8 bg-white">
+      <div className="relative flex-1 bg-white">
+        <div className="h-full p-4 pb-40 overflow-y-auto md:p-8 md:pb-40 bg-white">
           <div className="max-w-3xl mx-auto space-y-6">
             {messages.length === 0 ? (
               <div className="mt-20 text-center text-gray-500">
@@ -419,7 +419,7 @@ export default function Home() {
         </div>
 
         {/* Input Area */}
-        <div className="p-4 bg-white">
+        <div className="absolute bottom-0 left-0 right-6 p-4 bg-white">
           <div className="relative max-w-3xl mx-auto">
             <textarea
               value={input}
