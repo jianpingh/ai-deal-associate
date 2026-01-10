@@ -282,7 +282,7 @@ export default function Home() {
         <div className="p-4">
           <button
             onClick={startNewChat}
-            className="flex items-center w-full gap-2 px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700"
+            className="flex items-center w-full gap-2 px-4 py-2 text-white transition-colors bg-[#7dbb42] rounded-lg hover:bg-[#6aa333]"
           >
             <PlusCircle className="w-4 h-4" />
             New Chat
