@@ -49,7 +49,7 @@ const SystemLogGroup = ({ items }: { items: Message[] }) => {
           <div className="px-5 py-3 bg-white">
             <div className="relative">
               {/* Continuous vertical line */}
-              <div className="absolute left-[7px] top-2 bottom-2 w-[2px] bg-gray-100" />
+              <div className="absolute left-[7.5px] top-2 bottom-2 w-px bg-gray-100" />
               
               <div className="space-y-2">
                 {items.flatMap((msg) => 
@@ -336,13 +336,13 @@ export default function Home() {
                       </div>
                     )}
                     <div
-                      className={`max-w-[80%] rounded-2xl px-6 py-4 ${
+                      className={`max-w-full rounded-2xl px-6 py-4 overflow-x-auto min-w-0 ${
                         msg.role === "user"
-                          ? "bg-gray-100 text-gray-900"
-                          : "bg-white text-gray-900 border border-gray-200 shadow-sm"
+                          ? "bg-gray-100 text-gray-900 ml-auto"
+                          : "bg-white text-gray-900 border border-gray-200 shadow-sm mr-auto"
                       }`}
                     >
-                      <div className={`prose max-w-none ${msg.role === "user" ? "" : ""}`}>
+                      <div className={`prose max-w-none w-full ${msg.role === "user" ? "" : ""}`}>
                         <ReactMarkdown
                             remarkPlugins={[remarkGfm, remarkMath]}
                             rehypePlugins={[rehypeKatex]}
@@ -392,11 +392,7 @@ export default function Home() {
                         </ReactMarkdown>
                       </div>
                     </div>
-                    {msg.role === "user" && (
-                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-[#9ca3af] bg-[#9ca3af]">
-                        <User className="w-5 h-5 text-white" />
-                      </div>
-                    )}
+                    {/* User avatar removed */}
                   </div>
                 );
               })
