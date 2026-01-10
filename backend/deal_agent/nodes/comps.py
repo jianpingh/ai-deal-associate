@@ -1,7 +1,7 @@
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 from deal_agent.state import DealState
-from deal_agent.tools.comps_tools import calculate_blended_rent, fetch_market_comparables
+from deal_agent.tools.comps_tools import calculate_blended_rent, fetch_market_comparables, format_comps_display
 import json
 
 def propose_comparables(state: DealState):
@@ -31,47 +31,33 @@ def propose_comparables(state: DealState):
     
     # Calculate blended rent for the proposed set
     blended_rent = calculate_blended_rent(comps_data)
+
+    # Determine display format based on user request
+    last_user_msg = ""
+    if state.get("messages"):
+        for msg in reversed(state["messages"]):
+            if msg.type == "human" or getattr(msg, "role", None) == "user":
+                if isinstance(msg.content, list):
+                    last_user_msg = " ".join([
+                        item.get("text", "") for item in msg.content 
+                        if isinstance(item, dict) and item.get("type") == "text"
+                    ])
+                else:
+                    last_user_msg = str(msg.content)
+                break
     
-    # Format as Markdown Table
-    table_template = "| {name} | {size} | {yield_val} | €{rent}/m² | {dist} |\n"
-    table_header = "| Asset Name | Size | Yield | Rent | Distance |\n|:---|:---|:---|:---|:---|\n"
+    use_table = "table" in last_user_msg.lower()
     
-    table_rows = "".join([
-        table_template.format(
-            name=c['name'], 
-            size=c['size'], 
-            yield_val=c['yield'], 
-            rent=c['rent'], 
-            dist=c['dist']
-        ) for c in comps_data
-    ])
-    comps_table = table_header + table_rows
-    
-    # Format Others Table if available
-    others_section = ""
-    if other_comps:
-        others_rows = "".join([
-            table_template.format(
-                name=c['name'], 
-                size=c['size'], 
-                yield_val=c['yield'], 
-                rent=c['rent'], 
-                dist=c['dist']
-            ) for c in other_comps
-        ])
-        others_section = (
-            f"\n\n**Other Available Comps:**\n"
-            f"{table_header}"
-            f"{others_rows}"
-            "\n"
-        )
-    
+    comps_display = format_comps_display(comps_data, use_table=use_table)
+    others_display = format_comps_display(other_comps, use_table=use_table, is_secondary=True) if other_comps else ""
+
     response_content = (
         f"I’ve identified {len(all_comps)} internal comparable logistics assets based on location ({location or 'General'}) and specification.\n\n"
         f"**Recommended set ({len(comps_data)}):**\n"
-        f"{comps_table}\n"
-        f"Current blended market rent from these {len(comps_data)} comps: **€{blended_rent}/m²/year**.\n\n\n"
-        f"{others_section}\n\n"
+        f"{comps_display}\n\n"
+        f"Current blended market rent from these {len(comps_data)} comps: **€{blended_rent}/m²/year**.\n\n"
+        f"&nbsp;\n\n"
+        f"{others_display}\n\n"
         "Please **remove any comps you don’t like or add others**, and I’ll recompute the market rent."
     )
     
@@ -186,13 +172,13 @@ def update_comparables(state: DealState):
         # Recalculate metrics
         new_blended_rent = calculate_blended_rent(updated_comps)
         
-        # Get just the names for the summary
-        comp_names = [c['name'].replace("Comp ", "") for c in updated_comps]
-        comp_names_str = ",".join(comp_names)
+        # Determine format
+        use_table = "table" in last_user_msg.lower()
+        comps_display = format_comps_display(updated_comps, use_table=use_table)
         
         response_content = (
             f"Done\n\n"
-            f"Final comparable set ({len(updated_comps)}): {comp_names_str}\n\n"
+            f"Final comparable set ({len(updated_comps)}): \n{comps_display}\n\n"
             f"Updated Blended Market Rent: **€{new_blended_rent}/m²/year**.\n\n"
             "Would you like to proceed to financial assumptions?"
         )

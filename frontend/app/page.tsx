@@ -49,7 +49,7 @@ const SystemLogGroup = ({ items }: { items: Message[] }) => {
           <div className="px-5 py-3 bg-white">
             <div className="relative">
               {/* Continuous vertical line */}
-              <div className="absolute left-[7.5px] top-2 bottom-2 w-px bg-gray-100" />
+              <div className="absolute left-[7.75px] top-2 bottom-2 w-[0.5px] bg-gray-200" />
               
               <div className="space-y-2">
                 {items.flatMap((msg) => 
@@ -302,7 +302,7 @@ export default function Home() {
       {/* Main Chat Area */}
       <div className="relative flex-1 bg-white">
         <div className="h-full p-4 pb-40 overflow-y-auto md:p-8 md:pb-40 bg-white">
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="max-w-4xl mx-auto space-y-6">
             {messages.length === 0 ? (
               <div className="mt-20 text-center text-gray-500">
                 <Bot className="w-16 h-16 mx-auto mb-4 text-gray-300" />
@@ -416,7 +416,7 @@ export default function Home() {
 
         {/* Input Area */}
         <div className="absolute bottom-0 left-0 right-6 p-4 bg-white">
-          <div className="relative max-w-3xl mx-auto">
+          <div className="relative max-w-4xl mx-auto">
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}

@@ -41,6 +41,45 @@ def calculate_blended_rent(comps_data: list) -> float:
         
     return round(total_rent_mass / total_size, 2)
 
+def format_comps_display(comps_data: list, use_table: bool = False, is_secondary: bool = False) -> str:
+    """
+    Formats the list of comparables into a Markdown table or a list.
+    """
+    if not comps_data:
+        return "No comps available."
+        
+    table_header = "| Asset Name | Size | Yield | Rent | Distance |\n|:---|:---|:---|:---|:---|\n"
+    table_template = "| {name} | {size} | {yield_val} | €{rent}/m² | {dist} |\n"
+    # Use standard markdown list syntax for better rendering, or double newlines for text bullets
+    list_template = "\n\n• {name} – {size}, {yield_val} yield, €{rent}/m², {dist} away"
+
+    # Normalize data for consistency
+    formatted_data = []
+    for c in comps_data:
+        # Ensure yield has % symbol if missing and it's a number-like string
+        y = str(c.get('yield', 'N/A'))
+        if y.replace('.', '').isdigit():
+            y += "%"
+            
+        formatted_data.append({
+            'name': c.get('name', 'Unknown'),
+            'size': c.get('size', 'N/A'),
+            'yield_val': y,
+            'rent': c.get('rent', 'N/A'),
+            'dist': c.get('dist', 'Unknown')
+        })
+
+    if use_table:
+        rows = "".join([table_template.format(**c) for c in formatted_data])
+        if is_secondary:
+             return f"\n\n\n**Other Candidate Comps:**\n{table_header}{rows}\n"
+        return f"{table_header}{rows}"
+    else:
+        rows = "".join([list_template.format(**c) for c in formatted_data])
+        if is_secondary:
+            return f"\n\n\n**Other Candidate Comps:**\n{rows}\n"
+        return rows
+
 
 def fetch_market_comparables(location: str = None, asset_type: str = "Logistics") -> list:
     """
