@@ -15,3 +15,5 @@ fastapi
 boto3
 numpy
 numpy-financial
+sqlmodel
+psycopg2-binary
