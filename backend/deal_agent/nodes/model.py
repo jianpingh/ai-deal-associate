@@ -210,11 +210,42 @@ def build_model(state: DealState):
         
         # 2. Fill Rent Roll (if data exists)
         extracted = state.get("extracted_data", {})
+        source_json = extracted.get("source_json", {})
         # Try to find tenancy data in various places
         tenancy_data = extracted.get("tenancy_schedule", [])
-        if not tenancy_data and "source_json" in extracted:
-             # Fallback: try to extract from source_json if it has a 'tenants' key
-             tenancy_data = extracted["source_json"].get("tenants", [])
+        
+        if not tenancy_data and source_json:
+             # Fallback 1: try to extract from source_json if it has a 'tenants' key
+             tenancy_data = source_json.get("tenants", [])
+             
+             # Fallback 2: try to extract from 'assets' -> 'leases' (Standard Format, e.g. sample_asset_bundle.json)
+             if not tenancy_data and "assets" in source_json:
+                 tenancy_data = [] # Ensure it's a list
+                 for asset in source_json["assets"]:
+                     if "leases" in asset:
+                         for lease in asset["leases"]:
+                             # Map Source JSON Lease format to Tenancy Data format expected by Excel Writer
+                             # Check tenant name location
+                             t_name = "Unknown"
+                             if isinstance(lease.get("tenant"), dict):
+                                 t_name = lease["tenant"].get("name", "Unknown")
+                             elif isinstance(lease.get("tenant"), str):
+                                 t_name = lease.get("tenant")
+                                 
+                             area_val = float(lease.get("area_m2") or 0)
+                             rent_psm_val = float(lease.get("rent_psm_pa") or 0)
+                             
+                             lease_obj = {
+                                 "name": t_name,
+                                 "unit": f"Unit {lease.get('excel_id', '')}",
+                                 "area": area_val,
+                                 "lease_start": lease.get("lease_start"),
+                                 "lease_end": lease.get("lease_end"),
+                                 "rent_psm": rent_psm_val,
+                                 "annual_rent": area_val * rent_psm_val
+                             }
+                             tenancy_data.append(lease_obj)
+                             print(f"DEBUG: Extracted Lease: {t_name}, Rent: {lease_obj['annual_rent']}")
         
         # --- MOCK DATA INJECTION ---
         # If no tenancy data is found (e.g. testing), inject sample data so the Excel isn't empty
