@@ -1,6 +1,6 @@
 from langchain_core.messages import AIMessage
 from deal_agent.state import DealState
-from deal_agent.tools.excel_engine import fill_excel_named_ranges, write_list_to_excel
+from deal_agent.tools.excel_engine import fill_excel_named_ranges, write_list_to_excel, update_financial_model
 from deal_agent.tools.s3_utils import upload_to_s3_and_get_link
 import os
 import time
@@ -8,40 +8,41 @@ from datetime import datetime
 import math
 import numpy_financial as npf
 
+# Define Template Path
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+BACKEND_DIR = os.path.dirname(os.path.dirname(CURRENT_DIR))
+TEMPLATE_PATH = os.path.join(BACKEND_DIR, "data", "templates", "MS Canopy Template -v5.xlsx")
+
 def get_model_inputs(assumptions: dict):
     """
     Centralized logic to parse and normalize assumptions.
     Ensures consistency between Python calculation and Excel export.
     """
-    # Helper to normalize percentages
     def normalize_percent(val, default):
         try:
             if val is None or val == "":
                 return default
             v = float(val)
-            # Handle percentage as whole number (e.g. 5.0 -> 0.05)
-            # But be careful with small numbers (e.g. 0.5% -> 0.005 vs 50% -> 0.5)
-            # Heuristic: if > 1.0, assume it's a percentage (e.g. 5 -> 0.05)
-            # If <= 1.0, assume it's a decimal (e.g. 0.05 -> 0.05)
-            # Exception: LTV 60 -> 0.60. LTV 0.6 -> 0.6.
             if v > 1.0: 
                 return v / 100.0
             return v
         except:
             return default
 
-    # Extract with defaults
-    market_rent = float(assumptions.get("erv") or assumptions.get("market_rent") or 85)
-    area = float(assumptions.get("leasable_area") or assumptions.get("area") or 10000)
+    market_rent = float(assumptions.get("erv") or assumptions.get("market_rent") or 80)
+    area = float(assumptions.get("leasable_area") or assumptions.get("area") or 0)
     
-    entry_yield = normalize_percent(assumptions.get("entry_yield"), 0.045)
-    exit_yield = normalize_percent(assumptions.get("exit_yield"), 0.0475)
-    rent_growth = normalize_percent(assumptions.get("rent_growth"), 0.03)
+    entry_yield = normalize_percent(assumptions.get("entry_yield"), 0.065) 
+    exit_yield = normalize_percent(assumptions.get("exit_yield"), 0.0475)  # Default from template
+    rent_growth = normalize_percent(assumptions.get("rent_growth"), 0.02)
     ltv = normalize_percent(assumptions.get("ltv"), 0.60)
-    interest_rate = normalize_percent(assumptions.get("interest_rate"), 0.04)
-    opex_ratio = normalize_percent(assumptions.get("opex_ratio"), 0.10)
-    capex = float(assumptions.get("capex") or 0)
-    purchasers_costs = normalize_percent(assumptions.get("purchasers_costs"), 0.0)
+    interest_rate = normalize_percent(assumptions.get("interest_rate"), 0.045)
+    
+    # Purchasers Costs in Template: Transfer Taxes (5%) + Closing Costs (0.75%)
+    purchasers_costs = normalize_percent(assumptions.get("purchasers_costs"), 0.05)
+    
+    hold_period = int(assumptions.get("hold_period", 7))
+    project_name = assumptions.get("project_name", "Scenario Analysis")
     
     return {
         "market_rent": market_rent,
@@ -51,285 +52,273 @@ def get_model_inputs(assumptions: dict):
         "rent_growth": rent_growth,
         "ltv": ltv,
         "interest_rate": interest_rate,
-        "opex_ratio": opex_ratio,
-        "capex": capex,
-        "purchasers_costs": purchasers_costs
+        "purchasers_costs": purchasers_costs,
+        "hold_period": hold_period,
+        "project_name": project_name,
+        "opex_ratio": 0.10, 
+        "capex": float(assumptions.get("capex") or 0)
     }
 
-def calculate_simple_metrics(inputs: dict):
+def calculate_simple_metrics(inputs: dict, passing_rent_total: float = 0):
     """
-    Performs a simplified 10-year DCF calculation to estimate returns.
+    Performs a simplified DCF calculation approaching MS Canopy Template logic.
     """
-    market_rent = inputs["market_rent"]
-    area = inputs["area"]
-    entry_yield = inputs["entry_yield"]
-    exit_yield = inputs["exit_yield"]
-    rent_growth = inputs["rent_growth"]
-    ltv = inputs["ltv"]
-    interest_rate = inputs["interest_rate"]
-    opex_ratio = inputs["opex_ratio"]
-    capex = inputs["capex"]
-    purchasers_costs = inputs["purchasers_costs"]
-    
-    # 1. Purchase Price
-    initial_rent = market_rent * area
-    # Avoid division by zero
-    if entry_yield == 0:
-        entry_yield = 0.0001
-        
-    net_purchase_price = initial_rent / entry_yield
-    purchase_price = net_purchase_price * (1 + purchasers_costs) # Gross Purchase Price
-    loan_amount = purchase_price * ltv
-    # Capex is treated as an initial capital outlay, increasing the equity required
-    equity_invested = purchase_price - loan_amount + capex
-    
-    # 2. Cash Flows (10 Years)
-    cash_flows = []
-    current_rent = initial_rent
-    
-    for year in range(1, 11):
-        # Growth starts from Year 2
-        if year > 1:
-            current_rent *= (1 + rent_growth)
-            
-        # Capex is now handled upfront, so we don't deduct it annually from NOI
-        noi = current_rent * (1 - opex_ratio)
-        interest = loan_amount * interest_rate
-        cash_flow = noi - interest
-        cash_flows.append(cash_flow)
-        
-    # 3. Exit
-    # Excel uses Forward NOI (Year 11) for Exit Valuation
-    exit_rent_forward = current_rent * (1 + rent_growth)
-    # Consistent with annual NOI, do not deduct Capex here either
-    exit_noi_forward = exit_rent_forward * (1 - opex_ratio)
-    if exit_yield == 0:
-        exit_yield = 0.0001
-    exit_value = exit_noi_forward / exit_yield
-    net_sale_proceeds = exit_value - loan_amount # Repay debt
-    
-    # Add sale proceeds to last year's cash flow
-    cash_flows[-1] += net_sale_proceeds
-    
-    # 4. Calculate Metrics
-    # Stream: [-Equity, CF1, CF2, ..., CF10]
-    stream = [-equity_invested] + cash_flows
-    print(f"DEBUG: Stream for IRR: {stream}")
-    
     try:
-        # Handle edge case where equity is 0 (infinite return)
-        if equity_invested <= 0:
-             # If no equity, IRR is undefined/infinite. 
-             # But if we have positive cash flows, it's technically infinite.
-             # We'll return None to indicate N/A, or maybe a high number?
-             # Standard practice is N/A.
-             print("DEBUG: Equity invested is <= 0, returning None for IRR")
-             irr = None
-        else:
-            irr = npf.irr(stream)
-            if math.isnan(irr):
-                irr = None
-    except Exception as e:
-        print(f"DEBUG: IRR calculation failed: {e}")
-        irr = None
-
-    if equity_invested > 0:
-        # Excel appears to calculate EM as (Total Cash Returned + Equity Invested) / Equity Invested
-        # This effectively double counts the return of capital, but we match the template logic here.
-        equity_multiple = (sum(cash_flows) + equity_invested) / equity_invested 
-    else:
-        equity_multiple = 0.0
+        market_rent = inputs["market_rent"]
+        area = inputs["area"]
+        entry_yield = inputs["entry_yield"]
+        exit_yield = inputs["exit_yield"]
+        rent_growth = inputs["rent_growth"]
+        ltv = inputs["ltv"]
+        interest_rate = inputs["interest_rate"]
+        opex_ratio = inputs["opex_ratio"]
+        capex = inputs["capex"]
+        purchasers_costs = inputs["purchasers_costs"]
+        closing_costs_pct = 0.0075 
         
-    # Excel calculates Yield on Cost based on Year 1 NOI (B4)
-    if purchase_price > 0:
-        yield_on_cost = (initial_rent * (1 - opex_ratio)) / purchase_price 
-    else:
-        yield_on_cost = 0.0
-    
-    # Final safeguard to ensure no None values for EM/YoC
-    if equity_multiple is None:
-        equity_multiple = 0.0
-    if yield_on_cost is None:
-        yield_on_cost = 0.0
-
-    return {
-        "irr": irr,
-        "equity_multiple": equity_multiple,
-        "yield_on_cost": yield_on_cost
-    }
+        hold_period = inputs["hold_period"]
+        
+        # 1. Rent Logic
+        erv_total = market_rent * area
+        current_rent = passing_rent_total if passing_rent_total > 0 else erv_total
+        
+        # 2. Purchase Price Logic
+        # Assumed: Price = Initial NOI / Entry Cap Rate.
+        initial_noi = current_rent * (1 - opex_ratio)
+        if entry_yield == 0: entry_yield = 0.0001
+        
+        net_purchase_price = initial_noi / entry_yield
+        
+        # Gross Purchase Price (TIC)
+        acquisition_costs = net_purchase_price * (purchasers_costs + closing_costs_pct)
+        gross_purchase_price = net_purchase_price + acquisition_costs
+        
+        # Debt
+        loan_amount = net_purchase_price * ltv
+        
+        # Equity
+        equity_invested = gross_purchase_price - loan_amount + capex
+        
+        # 3. Cash Flows
+        cash_flows = []
+        running_rent = current_rent
+        
+        for year in range(1, hold_period + 1):
+            if year > 1:
+                running_rent *= (1 + rent_growth)
+            
+            noi = running_rent * (1 - opex_ratio)
+            interest = loan_amount * interest_rate
+            
+            # Pre-Tax Cash Flow
+            cash_flow = noi - interest
+            cash_flows.append(cash_flow)
+            
+        # 4. Exit
+        projected_erv_exit = erv_total * ((1 + rent_growth) ** hold_period)
+        exit_noi = projected_erv_exit * (1 - opex_ratio)
+        
+        if exit_yield == 0: exit_yield = 0.0001
+        
+        gross_exit_value = exit_noi / exit_yield
+        sales_costs = gross_exit_value * 0.015 
+        
+        net_sale_proceeds = gross_exit_value - sales_costs - loan_amount
+        
+        # Add proceeds
+        cash_flows[-1] += net_sale_proceeds
+        
+        # 5. Metrics
+        stream = [-equity_invested] + cash_flows 
+        
+        irr = npf.irr(stream)
+        if math.isnan(irr): irr = None
+        
+        if equity_invested > 0:
+            equity_multiple = (sum(cash_flows) + equity_invested) / equity_invested
+        else:
+             equity_multiple = 0.0
+             
+        # Yield on Cost: First Year NOI / Gross Purchase Price
+        if gross_purchase_price > 0:
+            yield_on_cost = initial_noi / gross_purchase_price 
+        else:
+            yield_on_cost = 0.0
+            
+        return {
+            "irr": irr,
+            "equity_multiple": equity_multiple,
+            "yield_on_cost": yield_on_cost,
+            "debug": {
+                "equity_invested": equity_invested,
+                "loan_amount": loan_amount,
+                "net_purchase_price": net_purchase_price,
+                "gross_purchase_price": gross_purchase_price,
+                "initial_noi": initial_noi
+            }
+        }
+    except Exception as e:
+        print(f"Error in metrics calc: {e}")
+        return {"irr": 0, "equity_multiple": 0, "yield_on_cost": 0, "debug": {}}
 
 def build_model(state: DealState):
     """
     Step 10: Build Model
-    Calculates IRR, Multiple, YOC, etc., using current assumptions and leases.
+    Populates MS Canopy Template -v5.xlsx
     """
-    print("--- Node: Build Model (UPDATED v2) ---", flush=True)
+    print("--- Node: Build Model (MS Canopy v5) ---", flush=True)
     
-    # Prepare data for Excel
-    # Mapping state keys to named ranges
-    # We use safe defaults if keys are missing
     assumptions = state.get("financial_assumptions", {})
-    print(f"DEBUG: Assumptions used: {assumptions}")
-    
-    # Use centralized logic to get inputs
     inputs = get_model_inputs(assumptions)
     
-    excel_inputs = {
-        "Market_Rent": inputs["market_rent"],
-        "Area": inputs["area"],
-        "Exit_Yield": inputs["exit_yield"],
-        "Rent_Growth": inputs["rent_growth"],
-        "Entry_Yield": inputs["entry_yield"],
-        "LTV": inputs["ltv"],
-        "Interest_Rate": inputs["interest_rate"],
-        "OpEx_Ratio": inputs["opex_ratio"],
-        "Capex": inputs["capex"]
-    }
+    # 1. Prepare Rent Roll Data
+    extracted = state.get("extracted_data", {})
+    source_json = extracted.get("source_json", {})
+    tenancy_data = extracted.get("tenancy_schedule", [])
     
-    # --- Calculate Metrics Dynamically ---
-    metrics = calculate_simple_metrics(inputs)
-    print(f"DEBUG: Metrics calculated: {metrics}")
+    if not tenancy_data and source_json:
+        tenancy_data = source_json.get("tenants", [])
+        if not tenancy_data and "assets" in source_json:
+            tenancy_data = [] 
+            for asset in source_json["assets"]:
+                if "leases" in asset:
+                    for lease in asset["leases"]:
+                        t_name = "Unknown"
+                        if isinstance(lease.get("tenant"), dict):
+                            t_name = lease["tenant"].get("name", "Unknown")
+                        elif isinstance(lease.get("tenant"), str):
+                            t_name = lease.get("tenant")
+                        
+                        area_val = float(lease.get("area_m2") or 0)
+                        current_rent_val = float(lease.get("annual_rent") or (area_val * float(lease.get("rent_psm_pa") or 0)))
+                        
+                        lease_obj = {
+                            "name": t_name,
+                            "area": area_val,
+                            "lease_start": lease.get("lease_start"),
+                            "lease_end": lease.get("lease_end"),
+                            "current_rent": current_rent_val
+                        }
+                        tenancy_data.append(lease_obj)
+
+    if not tenancy_data:
+        tenancy_data = [
+            {"name": "Mock Tenant A", "area": 1500, "lease_start": "2023-01-01", "lease_end": "2028-12-31", "current_rent": 120000},
+            {"name": "Mock Tenant B", "area": 2500, "lease_start": "2022-06-01", "lease_end": "2027-05-31", "current_rent": 200000},
+        ]
+        
+    total_area_rr = sum([float(t.get("area", 0)) for t in tenancy_data])
+    total_passing_rent = sum([float(t.get("current_rent", 0)) for t in tenancy_data])
     
-    # Define template path
-    # Use path relative to this file to ensure it works regardless of CWD
-    # model.py is in backend/deal_agent/nodes/
-    # Go up 2 levels: nodes -> deal_agent -> backend
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    backend_dir = os.path.dirname(os.path.dirname(current_dir))
-    template_path = os.path.join(backend_dir, "data", "templates", "financial_model_template.xlsx")
-    
-    print(f"DEBUG: Looking for template at: {template_path}")
-    
-    # Execute Excel update if template exists
-    download_link = ""
-    if os.path.exists(template_path):
-        # 1. Fill Named Ranges
-        # fill_excel_named_ranges is a StructuredTool, so we must use .invoke()
-        result = fill_excel_named_ranges.invoke({"file_path": template_path, "data": excel_inputs})
-        log_detail = f"(Result: {result})"
-        
-        # 2. Fill Rent Roll (if data exists)
-        extracted = state.get("extracted_data", {})
-        source_json = extracted.get("source_json", {})
-        # Try to find tenancy data in various places
-        tenancy_data = extracted.get("tenancy_schedule", [])
-        
-        if not tenancy_data and source_json:
-             # Fallback 1: try to extract from source_json if it has a 'tenants' key
-             tenancy_data = source_json.get("tenants", [])
-             
-             # Fallback 2: try to extract from 'assets' -> 'leases' (Standard Format, e.g. sample_asset_bundle.json)
-             if not tenancy_data and "assets" in source_json:
-                 tenancy_data = [] # Ensure it's a list
-                 for asset in source_json["assets"]:
-                     if "leases" in asset:
-                         for lease in asset["leases"]:
-                             # Map Source JSON Lease format to Tenancy Data format expected by Excel Writer
-                             # Check tenant name location
-                             t_name = "Unknown"
-                             if isinstance(lease.get("tenant"), dict):
-                                 t_name = lease["tenant"].get("name", "Unknown")
-                             elif isinstance(lease.get("tenant"), str):
-                                 t_name = lease.get("tenant")
-                                 
-                             area_val = float(lease.get("area_m2") or 0)
-                             rent_psm_val = float(lease.get("rent_psm_pa") or 0)
-                             
-                             lease_obj = {
-                                 "name": t_name,
-                                 "unit": f"Unit {lease.get('excel_id', '')}",
-                                 "area": area_val,
-                                 "lease_start": lease.get("lease_start"),
-                                 "lease_end": lease.get("lease_end"),
-                                 "rent_psm": rent_psm_val,
-                                 "annual_rent": area_val * rent_psm_val
-                             }
-                             tenancy_data.append(lease_obj)
-                             print(f"DEBUG: Extracted Lease: {t_name}, Rent: {lease_obj['annual_rent']}")
-        
-        # --- MOCK DATA INJECTION ---
-        # If no tenancy data is found (e.g. testing), inject sample data so the Excel isn't empty
-        if not tenancy_data:
-            tenancy_data = [
-                {"name": "Logistics Corp A", "unit": "Unit 1", "area": 5000, "lease_start": "2023-01-01", "lease_end": "2028-12-31", "annual_rent": 425000, "rent_psm": 85},
-                {"name": "E-Commerce Ltd", "unit": "Unit 2", "area": 3000, "lease_start": "2024-06-01", "lease_end": "2029-05-31", "annual_rent": 270000, "rent_psm": 90},
-                {"name": "Global Supply Chain", "unit": "Unit 3", "area": 2000, "lease_start": "2022-01-01", "lease_end": "2027-12-31", "annual_rent": 160000, "rent_psm": 80},
-            ]
-             
-        if tenancy_data:
-            # Format data for Excel: List of Lists
-            # Headers: ["Tenant Name", "Unit", "Area (sqm)", "Lease Start", "Lease End", "Annual Rent (EUR)", "Rent/sqm/yr"]
-            rr_rows = []
-            for t in tenancy_data:
-                row = [
-                    t.get("name", "Unknown"),
-                    t.get("unit", ""),
-                    t.get("area", 0),
-                    t.get("lease_start", ""),
-                    t.get("lease_end", ""),
-                    t.get("annual_rent", 0),
-                    t.get("rent_psm", 0)
-                ]
-                rr_rows.append(row)
-            
-            if rr_rows:
-                rr_result = write_list_to_excel.invoke({
-                    "file_path": template_path, 
-                    "sheet_name": "Rent Roll", 
-                    "data": rr_rows
-                })
-                log_detail += f" | Rent Roll: {rr_result}"
-        
-        # Upload to S3
+    if inputs["area"] == 0:
+        inputs["area"] = total_area_rr
+
+    # Format for 'Input Rent Roll' Sheet
+    def parse_date(date_str):
+        if not date_str: return ""
         try:
-            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-            # Use deal_id if available, else 'temp'
-            deal_id = state.get("deal_id", "temp")
-            s3_object_name = f"financial_models/Financial_Model_{timestamp}.xlsx"
+            return datetime.strptime(str(date_str).split("T")[0], "%Y-%m-%d")
+        except:
+            return date_str
+
+    rr_rows = []
+    for t in tenancy_data:
+        row = [
+            t.get("name", "Unknown"),
+            t.get("area", 0),
+            parse_date(t.get("lease_start", "")),
+            "", 
+            "", 
+            parse_date(t.get("lease_end", "")),
+            t.get("current_rent", 0)
+        ]
+        rr_rows.append(row)
+
+    # Calculate Metrics first to get Loan Amount
+    metrics = calculate_simple_metrics(inputs, passing_rent_total=total_passing_rent)
+    loan_amount_calc = metrics.get('debug', {}).get('loan_amount', 0)
+
+    # 2. Perform Excel Operations
+    download_link = ""
+    log_detail = ""
+    
+    if os.path.exists(TEMPLATE_PATH):
+        try:
+            write_list_to_excel.invoke({
+                "file_path": TEMPLATE_PATH,
+                "sheet_name": "Input Rent Roll",
+                "data": rr_rows,
+                "start_row": 2,
+                "start_col": 1
+            })
+            log_detail += " | Filled Rent Roll"
             
-            s3_url = upload_to_s3_and_get_link(template_path, s3_object_name)
+            updates = {
+                "Input Other!B1": inputs["project_name"],
+                "Input Other!B4": inputs["hold_period"],
+                "Input Other!B5": inputs["market_rent"],
+                "Input Other!B12": inputs["entry_yield"],  # Entry_Cap_Rate
+                "Input Other!B13": inputs["purchasers_costs"],  # Transfer_Taxes
+                "Input Other!B15": inputs["exit_yield"],  # Exit_Cap_Rate
+                "Debt Schedule (Bullet)!D10": inputs["interest_rate"],
+                # CRITICAL: Update LTV in Money Page (E43) which drives Debt calculation (E44 = E43 * E31)
+                "Money Page!E43": inputs["ltv"]  # LTV percentage (e.g., 0.60 for 60%)
+            }
+            
+            update_financial_model.invoke({
+                "file_path": TEMPLATE_PATH,
+                "updates": updates
+            })
+            log_detail += f" | Filled Assumptions (Loan: {loan_amount_calc:,.0f})"
+            
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            s3_object_name = f"financial_models/MS_Canopy_{timestamp}.xlsx"
+            s3_url = upload_to_s3_and_get_link(TEMPLATE_PATH, s3_object_name)
             
             if s3_url:
-                download_link = f"📥 **[Download Financial_Model]({s3_url})**"
+                download_link = f"📥 **[Download Financial Model]({s3_url})**"
             else:
                 download_link = "(Upload to S3 failed. Please check AWS credentials.)"
         except Exception as e:
-            print(f"Error uploading to S3: {e}")
-            download_link = f"(Error uploading to S3: {e})"
+            print(f"Error processing Excel: {e}")
+            download_link = f"(Error processing Excel: {e})"
     else:
-        log_detail = "(Skipped: Template not found)"
+        log_detail = f"(Skipped: Template not found at {TEMPLATE_PATH})"
+
     
-    # Status update simulating system actions
     status_content = (
-        "System Processing:\n"
-        f"- Fills named ranges in the Excel template {log_detail}\n"
-        "- Uploads model to secure cloud storage\n"
-        "- Runs the model and computes IRR, equity multiple, YoC, etc."
+        "System Processing (v5 Template):\n"
+        f"{log_detail}\n"
+        f"- Configured with {len(tenancy_data)} tenants, Total Rent: €{total_passing_rent:,.0f}\n"
+        f"- Set LTV: {inputs['ltv']*100:.0f}%, Entry Cap: {inputs['entry_yield']*100:.1f}%, Exit Cap: {inputs['exit_yield']*100:.1f}%\n"
+        "- Uploaded model to secure cloud storage\n"
+        "📊 All metrics calculated by Excel formulas"
     )
-    
-    # Format metrics for display
-    if metrics.get('irr') is not None:
-        irr_display = f"{metrics['irr']*100:.2f}%"
-    else:
-        irr_display = "N/A (Calc Failed)" # Fallback default if calculation fails
-        
-    if metrics.get('equity_multiple') is not None:
-        em_display = f"{metrics['equity_multiple']:.2f}x"
-    else:
-        em_display = "N/A (Calc Failed)"
 
-    if metrics.get('yield_on_cost') is not None:
-        yoc_display = f"{metrics['yield_on_cost']*100:.2f}%"
-    else:
-        yoc_display = "N/A (Calc Failed)"
-
-    # Agent response
     response_content = (
-        "The Excel model is built. Key results:\n\n"
-        f"- 10-year leveraged IRR: {irr_display}\n"
-        f"- Equity multiple: {em_display}\n"
-        f"- Yield on cost at stabilisation: {yoc_display}\n\n"
+        "✅ **Financial Model Built Successfully**\n\n"
+        "**� Model Inputs Configured:**\n"
+        f"- Total Passing Rent: €{total_passing_rent:,.0f}\n"
+        f"- Leasable Area: {inputs['area']:,.0f} SQM\n"
+        f"- Market Rent (ERV): €{inputs['market_rent']}/SQM\n"
+        f"- Entry Cap Rate: {inputs['entry_yield']*100:.2f}%\n"
+        f"- Exit Cap Rate: {inputs['exit_yield']*100:.2f}%\n"
+        f"- **LTV: {inputs['ltv']*100:.0f}%** (Money Page E43)\n"
+        f"- Interest Rate: {inputs['interest_rate']*100:.2f}%\n"
+        f"- Hold Period: {inputs['hold_period']} years\n\n"
+        "**🔍 To View Excel Calculated Results:**\n"
+        "1. Download and open the Excel file below\n"
+        "2. Press **Ctrl+Alt+F9** to recalculate all formulas\n"
+        "3. Navigate to **'Cash Flows'** sheet\n"
+        "4. Check **Column E**:\n"
+        "   - **E105**: Equity Invested\n"
+        "   - **E107**: Levered IRR\n"
+        "   - **E108**: Levered Multiple\n"
+        "   - **E110**: Net Gain / (Loss)\n\n"
         f"{download_link}\n\n"
+        "⚠️ **Note**: Excel uses its own cashflow projection model. "
+        "The calculated IRR and returns are based on the template's built-in formulas, "
+        "which may include additional assumptions not captured in the simple Python preview."
     )
     
     return {
@@ -344,7 +333,4 @@ def build_model(state: DealState):
             "status": "built"
         }
     }
-
-def model_node(state: DealState):
-    pass
 

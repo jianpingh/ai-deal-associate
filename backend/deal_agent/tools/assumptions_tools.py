@@ -20,14 +20,25 @@ def process_assumption_updates(current_assumptions: dict, user_input: str) -> di
              "Current Assumptions: {current_assumptions}\n\n"
              "Instructions:\n"
              "1. Identify which assumptions the user wants to change.\n"
-             "2. Extract the new values. Convert percentages to decimals (e.g., 5% -> 0.05).\n"
+             "2. Extract the new values. Convert percentages to decimals (e.g., 5% -> 0.05, 7.75% -> 0.0775).\n"
              "3. Return a JSON object containing ONLY the keys that need to be updated.\n"
-             "4. Supported keys: 'erv' (Market Rent), 'growth' (Rent Growth), 'exit_yield', 'entry_yield', 'discount_rate', "
-             "'downtime' (months), 'renewal_prob' (probability), 'ltv', 'interest_rate', 'capex', 'opex_ratio'.\n"
+             "4. Supported keys:\n"
+             "   - 'erv' or 'market_rent': Market Rent\n"
+             "   - 'growth' or 'rent_growth': Rent Growth Rate\n"
+             "   - 'exit_yield' or 'exit_cap_rate': Exit Cap Rate\n"
+             "   - 'entry_yield' or 'entry_cap_rate': Entry Cap Rate\n"
+             "   - 'discount_rate': Discount Rate\n"
+             "   - 'downtime': Downtime in months\n"
+             "   - 'renewal_prob': Renewal probability\n"
+             "   - 'ltv': Loan to Value ratio\n"
+             "   - 'interest_rate': Interest Rate\n"
+             "   - 'capex': Capital Expenditure\n"
+             "   - 'opex_ratio': Operating Expense Ratio\n"
              "5. If the user says 'increase by X', calculate the new value based on the current assumption.\n"
-             "6. If the user says 'set to X', use X directly.\n"
+             "6. If the user says 'set to X' or 'change to X', use X directly.\n"
              "7. For ERV/Rent, if the user gives a value like '100', assume it's the absolute value. If they say '+10%', calculate it.\n"
-             "8. Do not include markdown formatting like ```json."
+             "8. Do not include markdown formatting like ```json.\n"
+             "9. IMPORTANT: 'Exit Cap Rate' and 'Exit Yield' both map to 'exit_yield' key."
             ),
             ("user", "{user_input}")
         ])
@@ -51,10 +62,24 @@ def process_assumption_updates(current_assumptions: dict, user_input: str) -> di
                         updated[key] = float(value)
                 else:
                     # Allow adding new keys if they are valid assumption keys
-                    valid_keys = ['erv', 'growth', 'exit_yield', 'entry_yield', 'discount_rate', 
+                    valid_keys = ['erv', 'market_rent', 'growth', 'rent_growth', 'exit_yield', 'exit_cap_rate', 
+                                  'entry_yield', 'entry_cap_rate', 'discount_rate', 
                                   'downtime', 'renewal_prob', 'ltv', 'interest_rate', 'capex', 'opex_ratio']
                     if key in valid_keys:
-                         updated[key] = float(value)
+                        # Normalize key aliases to standard names
+                        if key == 'exit_cap_rate':
+                            key = 'exit_yield'
+                        elif key == 'entry_cap_rate':
+                            key = 'entry_yield'
+                        elif key == 'market_rent':
+                            key = 'erv'
+                        elif key == 'rent_growth':
+                            key = 'growth'
+                        
+                        if key == 'downtime':
+                            updated[key] = int(value)
+                        else:
+                            updated[key] = float(value)
                          
     except Exception as e:
         print(f"[WARNING] LLM assumption parsing failed: {e}. Falling back to regex.")
