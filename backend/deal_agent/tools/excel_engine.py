@@ -2,6 +2,120 @@ from langchain_core.tools import tool
 import openpyxl
 import pandas as pd
 from typing import Dict, Any, List
+import os
+import sys
+
+
+def calculate_excel_and_read_results(file_path: str) -> Dict[str, Any]:
+    """
+    Use win32com to open Excel, force recalculation, and read the calculated results.
+    This ensures we get the same values as manually opening Excel and pressing Ctrl+Alt+F9.
+    
+    Based on MS Canopy Template structure:
+    - E105: Equity Invested = 'Money Page'!E31 - 'Money Page'!E44
+    - E107: Levered IRR = XIRR(T102:BH102, $T$78:$BH$78)
+    - E108: Levered Multiple = -SUMIF(T102:BH102,">0") / SUMIF(T102:BH102,"<0")
+    - E110: Net Gain / (Loss)
+    
+    Args:
+        file_path: Absolute path to the Excel file
+        
+    Returns:
+        Dictionary with equity_invested, levered_irr, levered_multiple, net_gain_loss
+    """
+    results = {
+        "equity_invested": None,
+        "levered_irr": None,
+        "levered_multiple": None,
+        "net_gain_loss": None,
+        "success": False,
+        "error": None
+    }
+    
+    # Only works on Windows with Excel installed
+    if sys.platform != 'win32':
+        results["error"] = "Excel COM automation only available on Windows"
+        return results
+    
+    excel = None
+    workbook = None
+    
+    try:
+        import win32com.client
+        import pythoncom
+        
+        # Initialize COM for this thread
+        pythoncom.CoInitialize()
+        
+        # Use DispatchEx for a fresh Excel instance
+        excel = win32com.client.DispatchEx("Excel.Application")
+        excel.Visible = False
+        excel.DisplayAlerts = False
+        excel.ScreenUpdating = False  # Disable screen updates for speed
+        
+        try:
+            abs_path = os.path.abspath(file_path)
+            workbook = excel.Workbooks.Open(abs_path, UpdateLinks=False, ReadOnly=False)
+            
+            # Force full recalculation of all formulas
+            excel.Calculate()
+            excel.CalculateFull()
+            
+            # Read results from Cash Flows sheet
+            cash_flows = workbook.Sheets("Cash Flows")
+            
+            # E105: Equity Invested
+            equity_invested = cash_flows.Range("E105").Value
+            if equity_invested is not None:
+                results["equity_invested"] = float(equity_invested)
+            
+            # E107: Levered IRR
+            levered_irr = cash_flows.Range("E107").Value
+            if levered_irr is not None:
+                results["levered_irr"] = float(levered_irr)
+            
+            # E108: Levered Multiple
+            levered_multiple = cash_flows.Range("E108").Value
+            if levered_multiple is not None:
+                results["levered_multiple"] = float(levered_multiple)
+            
+            # E110: Net Gain / (Loss)
+            net_gain_loss = cash_flows.Range("E110").Value
+            if net_gain_loss is not None:
+                results["net_gain_loss"] = float(net_gain_loss)
+            
+            results["success"] = True
+            
+            # Save the workbook with calculated values
+            workbook.Save()
+            
+        except Exception as inner_e:
+            results["error"] = f"Error reading Excel: {str(inner_e)}"
+        finally:
+            if workbook:
+                try:
+                    workbook.Close(False)
+                except:
+                    pass
+            if excel:
+                try:
+                    excel.Quit()
+                except:
+                    pass
+            pythoncom.CoUninitialize()
+            
+    except ImportError:
+        results["error"] = "win32com not installed. Install with: pip install pywin32"
+    except Exception as e:
+        results["error"] = f"Excel COM error: {str(e)}"
+        if excel:
+            try:
+                excel.Quit()
+            except:
+                pass
+        
+    return results
+
 
 @tool
 def read_excel_sheet(file_path: str, sheet_name: str = None) -> str:

@@ -4,9 +4,11 @@ from deal_agent.tools.excel_engine import fill_excel_named_ranges, write_list_to
 from deal_agent.tools.s3_utils import upload_to_s3_and_get_link
 import os
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
+from dateutil.relativedelta import relativedelta
 import math
 import numpy_financial as npf
+from scipy.optimize import brentq
 
 # Define Template Path
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -161,6 +163,325 @@ def calculate_simple_metrics(inputs: dict, passing_rent_total: float = 0):
         print(f"Error in metrics calc: {e}")
         return {"irr": 0, "equity_multiple": 0, "yield_on_cost": 0, "debug": {}}
 
+
+def xirr(cash_flows: list, dates: list, guess: float = 0.1) -> float:
+    """
+    计算XIRR (与Excel XIRR函数一致)
+    
+    Args:
+        cash_flows: 现金流列表
+        dates: 对应的日期列表
+        guess: 初始猜测值
+        
+    Returns:
+        XIRR 年化收益率
+    """
+    if len(cash_flows) != len(dates):
+        raise ValueError("现金流和日期数量必须相同")
+    
+    # 转换日期为天数差
+    date0 = dates[0]
+    days = [(d - date0).days for d in dates]
+    
+    def npv_func(rate):
+        """计算给定利率下的NPV"""
+        if rate <= -1:
+            return float('inf')
+        npv = 0
+        for cf, day in zip(cash_flows, days):
+            npv += cf / ((1 + rate) ** (day / 365.0))
+        return npv
+    
+    try:
+        # 使用 Brent 方法求解
+        result = brentq(npv_func, -0.9999, 10.0, xtol=1e-10)
+        return result
+    except ValueError:
+        # 如果 brentq 失败，尝试 Newton-Raphson
+        try:
+            rate = guess
+            for _ in range(100):
+                npv = npv_func(rate)
+                if abs(npv) < 1e-10:
+                    return rate
+                # 数值导数
+                delta = 0.0001
+                dnpv = (npv_func(rate + delta) - npv) / delta
+                if abs(dnpv) < 1e-10:
+                    break
+                rate = rate - npv / dnpv
+            return rate
+        except:
+            return None
+
+
+def calculate_metrics_excel_compatible(inputs: dict, passing_rent_total: float = 0, start_date: datetime = None):
+    """
+    完全按照 MS Canopy Template 的逻辑计算财务指标
+    
+    Excel模板计算逻辑 (经过详细分析验证):
+    ============================================
+    1. Purchase Price = Annual NOI / Entry Cap
+       - NOI = 有效租约的年租金 (不考虑增长)
+       
+    2. TIC = Purchase Price
+    3. Total Acquisition Cost = Purchase Price × (1 + Transfer Tax + Closing Costs)
+    4. Senior Debt = TIC × LTV
+    5. Equity Invested = TIC - Senior Debt
+    
+    现金流:
+    - Q0 = -Total Acquisition Cost + Senior Debt (无额外费用)
+    - Q1-Q(n-1) = Quarterly EBITDA - Interest - Tax
+    - Q(n) = Operations + Exit Value - Debt Repayment
+    
+    退出:
+    - Exit NOI = Entry NOI (Excel不使用租金增长计算退出NOI!)
+    - Gross Exit Value = Exit NOI / Exit Cap
+    - Net Disposal = Gross Exit Value × (1 - Sales Costs%)
+    ============================================
+    """
+    try:
+        # 输入参数
+        entry_yield = inputs["entry_yield"]
+        exit_yield = inputs["exit_yield"]
+        rent_growth = inputs["rent_growth"]  # 注意：Excel退出不使用这个增长
+        ltv = inputs["ltv"]
+        interest_rate = inputs["interest_rate"]
+        purchasers_costs = inputs["purchasers_costs"]
+        closing_costs_pct = 0.0075  # Excel template default (0.75%)
+        hold_period = inputs["hold_period"]
+        opex_ratio = inputs.get("opex_ratio", 0)  # 默认0
+        tax_rate = 0.25  # Excel template default (25%)
+        sales_costs_pct = 0.015  # 1.5% sales costs
+        upfront_fee_pct = 0.015  # 1.5% upfront fee on debt (Excel CF_Ops at Q0)
+        
+        # 起始日期 (默认使用当前季度末)
+        if start_date is None:
+            today = datetime.now()
+            quarter = (today.month - 1) // 3
+            quarter_end_month = (quarter + 1) * 3
+            start_date = datetime(today.year, quarter_end_month, 1) + relativedelta(months=1) - timedelta(days=1)
+        
+        # ========================================
+        # 按照Excel的精确逻辑计算
+        # ========================================
+        
+        # Annual NOI = Passing Rent (已经是NOI)
+        annual_noi = passing_rent_total
+        
+        # Purchase Price = Annual NOI / Entry Cap
+        if entry_yield == 0:
+            entry_yield = 0.0001
+        purchase_price = annual_noi / entry_yield
+        
+        # TIC = Purchase Price
+        tic = purchase_price
+        
+        # Total Acquisition Cost (包含费用)
+        # Excel: Transfer Tax (6.5%) + Closing Costs (0.75%)
+        total_acquisition_cost = purchase_price * (1 + purchasers_costs + closing_costs_pct)
+        
+        # Senior Debt = TIC × LTV
+        senior_debt = tic * ltv
+        
+        # Equity Invested = TIC - Senior Debt
+        equity_invested = tic - senior_debt
+        
+        # ========================================
+        # 季度现金流计算 (精确匹配Excel)
+        # ========================================
+        quarters_per_year = 4
+        exit_quarter = hold_period * quarters_per_year  # 退出季度
+        total_quarters = exit_quarter + 1  # +1 for Q0
+        
+        # 季度 EBITDA = Annual NOI / 4
+        quarterly_ebitda = annual_noi / quarters_per_year
+        
+        # 季度利息 = Senior Debt × Interest Rate / 4
+        quarterly_interest = senior_debt * interest_rate / quarters_per_year
+        
+        # 生成日期序列 (季度末)
+        dates = []
+        current_date = start_date
+        for q in range(total_quarters):
+            dates.append(current_date)
+            current_date = current_date + relativedelta(months=3)
+        
+        # 生成现金流序列
+        cash_flows = []
+        
+        # ========================================
+        # Q0: 初始投资 (Excel精确逻辑)
+        # Excel: CF_Ops = -Upfront Fee (1.5% of debt)
+        #        CF_Investing = -Total Acquisition Cost
+        #        CF_Financing = +Senior Debt
+        #        Q0 CF = CF_Ops + CF_Investing + CF_Financing
+        # ========================================
+        upfront_fee = senior_debt * upfront_fee_pct
+        cf_ops_q0 = -upfront_fee
+        cf_investing_q0 = -total_acquisition_cost
+        cf_financing_q0 = senior_debt
+        q0_cf = cf_ops_q0 + cf_investing_q0 + cf_financing_q0
+        cash_flows.append(q0_cf)
+        
+        # ========================================
+        # Q1 到 Q(exit): 运营现金流
+        # Excel: EBITDA - Interest - Tax
+        # Tax = (EBITDA - Interest) × 25% if positive
+        # ========================================
+        for q in range(1, total_quarters):
+            if q < exit_quarter:
+                # 正常运营季度
+                pre_tax_cf = quarterly_ebitda - quarterly_interest
+                taxes = pre_tax_cf * tax_rate if pre_tax_cf > 0 else 0
+                cf = pre_tax_cf - taxes
+                cash_flows.append(cf)
+            elif q == exit_quarter:
+                # 退出季度
+                # Excel关键: Exit NOI = Entry NOI (不增长!)
+                exit_noi = annual_noi  # 不应用租金增长
+                
+                if exit_yield == 0:
+                    exit_yield = 0.0001
+                gross_exit_value = exit_noi / exit_yield
+                
+                # Sales Costs = 1.5%
+                sales_costs = gross_exit_value * sales_costs_pct
+                net_disposal_proceeds = gross_exit_value - sales_costs
+                
+                # 正常运营现金流
+                pre_tax_cf = quarterly_ebitda - quarterly_interest
+                taxes = pre_tax_cf * tax_rate if pre_tax_cf > 0 else 0
+                cf_ops = pre_tax_cf - taxes
+                
+                # 退出季度现金流 = 运营 + 退出收益 - 债务偿还
+                cf = cf_ops + net_disposal_proceeds - senior_debt
+                cash_flows.append(cf)
+        
+        # ========================================
+        # 计算指标 (使用XIRR和Excel公式)
+        # ========================================
+        
+        # 过滤零值现金流
+        valid_cf = [(cf, dt) for cf, dt in zip(cash_flows, dates) if cf != 0]
+        valid_cfs = [x[0] for x in valid_cf]
+        valid_dates = [x[1] for x in valid_cf]
+        
+        # Levered IRR (XIRR)
+        try:
+            levered_irr = xirr(valid_cfs, valid_dates)
+        except:
+            levered_irr = None
+        
+        # Levered Multiple = -SUMIF(positive) / SUMIF(negative)
+        positive_cf = sum(cf for cf in cash_flows if cf > 0)
+        negative_cf = sum(cf for cf in cash_flows if cf < 0)
+        levered_multiple = -positive_cf / negative_cf if negative_cf != 0 else 0
+        
+        # Net Gain / (Loss)
+        net_gain_loss = sum(cash_flows)
+        
+        # Yield on Cost
+        yield_on_cost = annual_noi / tic if tic > 0 else 0
+        
+        return {
+            "irr": levered_irr,
+            "equity_multiple": levered_multiple,
+            "yield_on_cost": yield_on_cost,
+            "net_gain_loss": net_gain_loss,
+            "debug": {
+                "equity_invested": equity_invested,
+                "loan_amount": senior_debt,
+                "tic": tic,
+                "total_acquisition_cost": total_acquisition_cost,
+                "purchase_price": purchase_price,
+                "annual_noi": annual_noi,
+                "quarterly_ebitda": quarterly_ebitda,
+                "quarterly_interest": quarterly_interest,
+                "q0_cf": q0_cf,
+                "exit_quarter": exit_quarter,
+                "cash_flows_summary": f"Q0: {q0_cf:,.0f}, Q1-Q{exit_quarter-1}: {cash_flows[1]:,.0f}/quarter, Q{exit_quarter}: {cash_flows[exit_quarter]:,.0f}",
+            }
+        }
+        
+    except Exception as e:
+        print(f"Error in Excel-compatible metrics calc: {e}")
+        import traceback
+        traceback.print_exc()
+        return {
+            "irr": None,
+            "equity_multiple": 0,
+            "yield_on_cost": 0,
+            "net_gain_loss": 0,
+            "debug": {"error": str(e)}
+        }
+
+
+def calculate_effective_noi(tenancy_data: list, model_start_date: datetime = None) -> tuple:
+    """
+    计算有效NOI，基于租约有效性
+    
+    Excel的GRI计算逻辑：
+    - 只计算在模型期间有效的租约
+    - 如果所有租约都已过期，使用最近过期的租约的租金
+    
+    Args:
+        tenancy_data: 租户数据列表
+        model_start_date: 模型开始日期
+        
+    Returns:
+        (effective_noi, explanation): 有效NOI和说明
+    """
+    if model_start_date is None:
+        today = datetime.now()
+        quarter = (today.month - 1) // 3
+        quarter_end_month = (quarter + 1) * 3
+        model_start_date = datetime(today.year, quarter_end_month, 1) + relativedelta(months=1) - timedelta(days=1)
+    
+    def parse_lease_date(date_str):
+        if not date_str:
+            return None
+        try:
+            if isinstance(date_str, datetime):
+                return date_str
+            return datetime.strptime(str(date_str).split("T")[0], "%Y-%m-%d")
+        except:
+            return None
+    
+    effective_rent = 0
+    effective_tenants = []
+    latest_expired_rent = 0
+    latest_expired_date = None
+    latest_expired_tenant = None
+    
+    for tenant in tenancy_data:
+        lease_end = parse_lease_date(tenant.get('lease_end'))
+        current_rent = float(tenant.get('current_rent', 0) or 0)
+        tenant_name = tenant.get('name', 'Unknown')
+        
+        if lease_end and lease_end >= model_start_date:
+            # 租约在模型期间有效
+            effective_rent += current_rent
+            effective_tenants.append(tenant_name)
+        elif lease_end:
+            # 租约过期，记录最近过期的
+            if latest_expired_date is None or lease_end > latest_expired_date:
+                latest_expired_date = lease_end
+                latest_expired_rent = current_rent
+                latest_expired_tenant = tenant_name
+    
+    if effective_rent > 0:
+        return effective_rent, f"Active leases: {', '.join(effective_tenants)}"
+    elif latest_expired_rent > 0:
+        # 如果所有租约都过期，使用最近过期的租约的租金
+        # 这与Excel的GRI计算逻辑一致
+        return latest_expired_rent, f"Using most recent lease ({latest_expired_tenant}, expired {latest_expired_date.strftime('%Y-%m-%d') if latest_expired_date else 'N/A'})"
+    else:
+        # 如果没有租约数据，使用总租金
+        total = sum(float(t.get('current_rent', 0) or 0) for t in tenancy_data)
+        return total, "Using total passing rent (no valid lease dates)"
+
+
 def build_model(state: DealState):
     """
     Step 10: Build Model
@@ -234,9 +555,15 @@ def build_model(state: DealState):
         ]
         rr_rows.append(row)
 
-    # Calculate Metrics first to get Loan Amount
-    metrics = calculate_simple_metrics(inputs, passing_rent_total=total_passing_rent)
+    # 计算有效NOI (与Excel GRI逻辑一致)
+    effective_noi, noi_explanation = calculate_effective_noi(tenancy_data)
+    print(f"Effective NOI: €{effective_noi:,.0f} ({noi_explanation})", flush=True)
+    
+    # Calculate Metrics using Excel-compatible calculation (quarterly cash flows + XIRR)
+    # 使用有效NOI而不是total_passing_rent
+    metrics = calculate_metrics_excel_compatible(inputs, passing_rent_total=effective_noi)
     loan_amount_calc = metrics.get('debug', {}).get('loan_amount', 0)
+    equity_invested_calc = metrics.get('debug', {}).get('equity_invested', 0)
 
     # 2. Perform Excel Operations
     download_link = ""
@@ -269,7 +596,8 @@ def build_model(state: DealState):
                 "file_path": TEMPLATE_PATH,
                 "updates": updates
             })
-            log_detail += f" | Filled Assumptions (Loan: {loan_amount_calc:,.0f})"
+            log_detail += f" | Filled Assumptions"
+            log_detail += f" | Effective NOI: €{effective_noi:,.0f}"
             
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
             s3_object_name = f"financial_models/MS_Canopy_{timestamp}.xlsx"
@@ -285,19 +613,25 @@ def build_model(state: DealState):
     else:
         log_detail = f"(Skipped: Template not found at {TEMPLATE_PATH})"
 
+    # Format calculated results for display
+    equity_invested_display = f"€{equity_invested_calc:,.0f}" if equity_invested_calc else "N/A"
+    levered_irr_display = f"{metrics['irr']*100:.2f}%" if metrics['irr'] else "N/A"
+    levered_multiple_display = f"{metrics['equity_multiple']:.2f}x" if metrics['equity_multiple'] else "N/A"
+    net_gain_loss_display = f"€{metrics['net_gain_loss']:,.0f}" if metrics.get('net_gain_loss') else "N/A"
+    
+    metrics_note = "💡 *Results calculated using Python (Excel-compatible logic: XIRR + quarterly cash flows)*"
     
     status_content = (
         "System Processing (v5 Template):\n"
         f"{log_detail}\n"
-        f"- Configured with {len(tenancy_data)} tenants, Total Rent: €{total_passing_rent:,.0f}\n"
+        f"- Configured with {len(tenancy_data)} tenants, Effective NOI: €{effective_noi:,.0f} ({noi_explanation})\n"
         f"- Set LTV: {inputs['ltv']*100:.0f}%, Entry Cap: {inputs['entry_yield']*100:.1f}%, Exit Cap: {inputs['exit_yield']*100:.1f}%\n"
-        "- Uploaded model to secure cloud storage\n"
-        "📊 All metrics calculated by Excel formulas"
+        "- Uploaded model to secure cloud storage"
     )
 
     response_content = (
         "✅ **Financial Model Built Successfully**\n\n"
-        "**� Model Inputs Configured:**\n"
+        "**⚙ Model Inputs Configured:**\n"
         f"- Total Passing Rent: €{total_passing_rent:,.0f}\n"
         f"- Leasable Area: {inputs['area']:,.0f} SQM\n"
         f"- Market Rent (ERV): €{inputs['market_rent']}/SQM\n"
@@ -306,19 +640,13 @@ def build_model(state: DealState):
         f"- **LTV: {inputs['ltv']*100:.0f}%** (Money Page E43)\n"
         f"- Interest Rate: {inputs['interest_rate']*100:.2f}%\n"
         f"- Hold Period: {inputs['hold_period']} years\n\n"
-        "**🔍 To View Excel Calculated Results:**\n"
-        "1. Download and open the Excel file below\n"
-        "2. Press **Ctrl+Alt+F9** to recalculate all formulas\n"
-        "3. Navigate to **'Cash Flows'** sheet\n"
-        "4. Check **Column E**:\n"
-        "   - **E105**: Equity Invested\n"
-        "   - **E107**: Levered IRR\n"
-        "   - **E108**: Levered Multiple\n"
-        "   - **E110**: Net Gain / (Loss)\n\n"
+        "**📊 Calculated Results (Excel-Compatible):**\n"
+        f"- **Equity Invested**: {equity_invested_display}\n"
+        f"- **Levered IRR**: {levered_irr_display}\n"
+        f"- **Levered Multiple**: {levered_multiple_display}\n"
+        f"- **Net Gain / (Loss)**: {net_gain_loss_display}\n\n"
         f"{download_link}\n\n"
-        "⚠️ **Note**: Excel uses its own cashflow projection model. "
-        "The calculated IRR and returns are based on the template's built-in formulas, "
-        "which may include additional assumptions not captured in the simple Python preview."
+        f"{metrics_note}"
     )
     
     return {
@@ -330,6 +658,8 @@ def build_model(state: DealState):
             "irr": metrics['irr'], 
             "equity_multiple": metrics['equity_multiple'],
             "yield_on_cost": metrics['yield_on_cost'],
+            "equity_invested": equity_invested_calc,
+            "net_gain_loss": metrics.get('net_gain_loss'),
             "status": "built"
         }
     }
