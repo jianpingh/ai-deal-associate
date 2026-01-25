@@ -1,6 +1,6 @@
 from langchain_core.messages import AIMessage
 from deal_agent.state import DealState
-from deal_agent.nodes.model import get_model_inputs, calculate_simple_metrics
+from deal_agent.nodes.model import get_model_inputs, calculate_metrics_excel_compatible, calculate_effective_noi
 from deal_agent.tools.excel_engine import fill_excel_named_ranges, write_list_to_excel, update_financial_model
 from deal_agent.tools.s3_utils import upload_to_s3_and_get_link
 import os
@@ -113,6 +113,39 @@ def rebuild_model_for_scenario(state: DealState):
     base_em = base_model.get("equity_multiple", 0)
     base_yoc = base_model.get("yield_on_cost", 0)
     
+    # Get effective NOI from extracted data (same logic as build_model)
+    extracted = state.get("extracted_data", {})
+    source_json = extracted.get("source_json", {})
+    tenancy_data = extracted.get("tenancy_schedule", [])
+    
+    if not tenancy_data and source_json:
+        tenancy_data = source_json.get("tenants", [])
+        if not tenancy_data and "assets" in source_json:
+            tenancy_data = []
+            for asset in source_json["assets"]:
+                if "leases" in asset:
+                    for lease in asset["leases"]:
+                        t_name = "Unknown"
+                        if isinstance(lease.get("tenant"), dict):
+                            t_name = lease["tenant"].get("name", "Unknown")
+                        elif isinstance(lease.get("tenant"), str):
+                            t_name = lease.get("tenant")
+                        
+                        area_val = float(lease.get("area_m2") or 0)
+                        current_rent_val = float(lease.get("annual_rent") or (area_val * float(lease.get("rent_psm_pa") or 0)))
+                        
+                        lease_obj = {
+                            "name": t_name,
+                            "area": area_val,
+                            "lease_start": lease.get("lease_start"),
+                            "lease_end": lease.get("lease_end"),
+                            "current_rent": current_rent_val
+                        }
+                        tenancy_data.append(lease_obj)
+    
+    # Calculate effective NOI (consistent with Excel GRI logic)
+    effective_noi, noi_explanation = calculate_effective_noi(tenancy_data) if tenancy_data else (0, "No tenancy data")
+    
     # Get current assumptions and apply scenario adjustments
     current_assumptions = state.get("financial_assumptions", {})
     scenario_assumptions = current_assumptions.copy()
@@ -199,12 +232,13 @@ def rebuild_model_for_scenario(state: DealState):
     if "erv" in scenario_assumptions:
         scenario_assumptions["market_rent"] = scenario_assumptions["erv"]
     
-    # Recalculate metrics
+    # Recalculate metrics using Excel-compatible calculation (quarterly cash flows + XIRR)
     metrics = {}
     inputs = {}
     try:
         inputs = get_model_inputs(scenario_assumptions)
-        metrics = calculate_simple_metrics(inputs)
+        # Use Excel-compatible calculation with effective NOI
+        metrics = calculate_metrics_excel_compatible(inputs, passing_rent_total=effective_noi)
         scenario_irr = metrics.get("irr", 0) or 0
         scenario_em = metrics.get("equity_multiple", 0) or 0
         scenario_yoc = metrics.get("yield_on_cost", 0) or 0
