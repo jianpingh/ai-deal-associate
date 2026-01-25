@@ -34,6 +34,7 @@ def process_assumption_updates(current_assumptions: dict, user_input: str) -> di
              "   - 'interest_rate': Interest Rate\n"
              "   - 'capex': Capital Expenditure\n"
              "   - 'opex_ratio': Operating Expense Ratio\n"
+             "   - 'hold_period': Investment holding period in years\n"
              "5. If the user says 'increase by X', calculate the new value based on the current assumption.\n"
              "6. If the user says 'set to X' or 'change to X', use X directly.\n"
              "7. For ERV/Rent, if the user gives a value like '100', assume it's the absolute value. If they say '+10%', calculate it.\n"
@@ -56,7 +57,7 @@ def process_assumption_updates(current_assumptions: dict, user_input: str) -> di
             for key, value in changes.items():
                 if key in updated:
                     # Type safety checks
-                    if key in ['downtime']:
+                    if key in ['downtime', 'hold_period']:
                         updated[key] = int(value)
                     else:
                         updated[key] = float(value)
@@ -64,7 +65,8 @@ def process_assumption_updates(current_assumptions: dict, user_input: str) -> di
                     # Allow adding new keys if they are valid assumption keys
                     valid_keys = ['erv', 'market_rent', 'growth', 'rent_growth', 'exit_yield', 'exit_cap_rate', 
                                   'entry_yield', 'entry_cap_rate', 'discount_rate', 
-                                  'downtime', 'renewal_prob', 'ltv', 'interest_rate', 'capex', 'opex_ratio']
+                                  'downtime', 'renewal_prob', 'ltv', 'interest_rate', 'capex', 'opex_ratio',
+                                  'hold_period']
                     if key in valid_keys:
                         # Normalize key aliases to standard names
                         if key == 'exit_cap_rate':
@@ -76,7 +78,7 @@ def process_assumption_updates(current_assumptions: dict, user_input: str) -> di
                         elif key == 'rent_growth':
                             key = 'growth'
                         
-                        if key == 'downtime':
+                        if key in ['downtime', 'hold_period']:
                             updated[key] = int(value)
                         else:
                             updated[key] = float(value)
@@ -169,6 +171,12 @@ def _process_assumption_updates_regex(current_assumptions: dict, user_input: str
         if val is not None:
             updated["interest_rate"] = val
 
+    # 11. Hold Period
+    if "hold period" in user_input_lower or "holding period" in user_input_lower or "hold years" in user_input_lower:
+        val = extract_number(user_input_lower)
+        if val is not None:
+            updated["hold_period"] = int(val)
+
     return updated
 
 
@@ -183,5 +191,6 @@ def fetch_default_assumptions(asset_type: str = "Logistics") -> dict:
         "exit_yield": 0.0475,
         "discount_rate": 0.065,
         "downtime": 9,
-        "renewal_prob": 0.65
+        "renewal_prob": 0.65,
+        "hold_period": 7
     }

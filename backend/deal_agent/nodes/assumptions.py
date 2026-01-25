@@ -145,6 +145,8 @@ def update_assumptions(state: DealState):
                 display_val = f"{v*100:.1f}%"
             elif k == 'downtime':
                 display_val = f"{v} months"
+            elif k == 'hold_period':
+                display_val = f"{v} years"
             
             # Format key for display
             display_key = k.replace('_', ' ')
