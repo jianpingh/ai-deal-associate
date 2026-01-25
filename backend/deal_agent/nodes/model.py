@@ -166,25 +166,25 @@ def calculate_simple_metrics(inputs: dict, passing_rent_total: float = 0):
 
 def xirr(cash_flows: list, dates: list, guess: float = 0.1) -> float:
     """
-    计算XIRR (与Excel XIRR函数一致)
+    Calculate XIRR (compatible with Excel XIRR function)
     
     Args:
-        cash_flows: 现金流列表
-        dates: 对应的日期列表
-        guess: 初始猜测值
+        cash_flows: List of cash flows
+        dates: List of corresponding dates
+        guess: Initial guess value
         
     Returns:
-        XIRR 年化收益率
+        XIRR annualized return rate
     """
     if len(cash_flows) != len(dates):
-        raise ValueError("现金流和日期数量必须相同")
+        raise ValueError("Cash flows and dates must have the same length")
     
     # 转换日期为天数差
     date0 = dates[0]
     days = [(d - date0).days for d in dates]
     
     def npv_func(rate):
-        """计算给定利率下的NPV"""
+        """Calculate NPV at given interest rate"""
         if rate <= -1:
             return float('inf')
         npv = 0
@@ -217,34 +217,34 @@ def xirr(cash_flows: list, dates: list, guess: float = 0.1) -> float:
 
 def calculate_metrics_excel_compatible(inputs: dict, passing_rent_total: float = 0, start_date: datetime = None):
     """
-    完全按照 MS Canopy Template 的逻辑计算财务指标
+    Calculate financial metrics following MS Canopy Template logic exactly
     
-    Excel模板计算逻辑 (经过详细分析验证):
+    Excel Template Calculation Logic (verified through detailed analysis):
     ============================================
     1. Purchase Price = Annual NOI / Entry Cap
-       - NOI = 有效租约的年租金 (不考虑增长)
+       - NOI = Annual rent from valid leases (no growth applied)
        
     2. TIC = Purchase Price
     3. Total Acquisition Cost = Purchase Price × (1 + Transfer Tax + Closing Costs)
     4. Senior Debt = TIC × LTV
     5. Equity Invested = TIC - Senior Debt
     
-    现金流:
-    - Q0 = -Total Acquisition Cost + Senior Debt (无额外费用)
+    Cash Flows:
+    - Q0 = -Total Acquisition Cost + Senior Debt (with upfront fee)
     - Q1-Q(n-1) = Quarterly EBITDA - Interest - Tax
     - Q(n) = Operations + Exit Value - Debt Repayment
     
-    退出:
-    - Exit NOI = Entry NOI (Excel不使用租金增长计算退出NOI!)
+    Exit:
+    - Exit NOI = Entry NOI (Excel does NOT apply rent growth for exit NOI!)
     - Gross Exit Value = Exit NOI / Exit Cap
     - Net Disposal = Gross Exit Value × (1 - Sales Costs%)
     ============================================
     """
     try:
-        # 输入参数
+        # Input parameters
         entry_yield = inputs["entry_yield"]
         exit_yield = inputs["exit_yield"]
-        rent_growth = inputs["rent_growth"]  # 注意：Excel退出不使用这个增长
+        rent_growth = inputs["rent_growth"]  # Note: Excel does not use this growth for exit
         ltv = inputs["ltv"]
         interest_rate = inputs["interest_rate"]
         purchasers_costs = inputs["purchasers_costs"]
@@ -255,7 +255,7 @@ def calculate_metrics_excel_compatible(inputs: dict, passing_rent_total: float =
         sales_costs_pct = 0.015  # 1.5% sales costs
         upfront_fee_pct = 0.015  # 1.5% upfront fee on debt (Excel CF_Ops at Q0)
         
-        # 起始日期 (默认使用当前季度末)
+        # Start date (default to current quarter end)
         if start_date is None:
             today = datetime.now()
             quarter = (today.month - 1) // 3
@@ -263,7 +263,7 @@ def calculate_metrics_excel_compatible(inputs: dict, passing_rent_total: float =
             start_date = datetime(today.year, quarter_end_month, 1) + relativedelta(months=1) - timedelta(days=1)
         
         # ========================================
-        # 按照Excel的精确逻辑计算
+        # Calculate following Excel's exact logic
         # ========================================
         
         # Annual NOI = Passing Rent (已经是NOI)
@@ -277,8 +277,8 @@ def calculate_metrics_excel_compatible(inputs: dict, passing_rent_total: float =
         # TIC = Purchase Price
         tic = purchase_price
         
-        # Total Acquisition Cost (包含费用)
-        # Excel: Transfer Tax (6.5%) + Closing Costs (0.75%)
+        # Total Acquisition Cost (including fees)
+        # Excel: Transfer Tax (5%) + Closing Costs (0.75%)
         total_acquisition_cost = purchase_price * (1 + purchasers_costs + closing_costs_pct)
         
         # Senior Debt = TIC × LTV
@@ -288,26 +288,26 @@ def calculate_metrics_excel_compatible(inputs: dict, passing_rent_total: float =
         equity_invested = tic - senior_debt
         
         # ========================================
-        # 季度现金流计算 (精确匹配Excel)
+        # Quarterly cash flow calculation (exact match with Excel)
         # ========================================
         quarters_per_year = 4
-        exit_quarter = hold_period * quarters_per_year  # 退出季度
+        exit_quarter = hold_period * quarters_per_year  # Exit quarter
         total_quarters = exit_quarter + 1  # +1 for Q0
         
-        # 季度 EBITDA = Annual NOI / 4
+        # Quarterly EBITDA = Annual NOI / 4
         quarterly_ebitda = annual_noi / quarters_per_year
         
-        # 季度利息 = Senior Debt × Interest Rate / 4
+        # Quarterly Interest = Senior Debt × Interest Rate / 4
         quarterly_interest = senior_debt * interest_rate / quarters_per_year
         
-        # 生成日期序列 (季度末)
+        # Generate date sequence (quarter ends)
         dates = []
         current_date = start_date
         for q in range(total_quarters):
             dates.append(current_date)
             current_date = current_date + relativedelta(months=3)
         
-        # 生成现金流序列
+        # Generate cash flow sequence
         cash_flows = []
         
         # ========================================
@@ -331,15 +331,15 @@ def calculate_metrics_excel_compatible(inputs: dict, passing_rent_total: float =
         # ========================================
         for q in range(1, total_quarters):
             if q < exit_quarter:
-                # 正常运营季度
+                # Normal operating quarter
                 pre_tax_cf = quarterly_ebitda - quarterly_interest
                 taxes = pre_tax_cf * tax_rate if pre_tax_cf > 0 else 0
                 cf = pre_tax_cf - taxes
                 cash_flows.append(cf)
             elif q == exit_quarter:
-                # 退出季度
-                # Excel关键: Exit NOI = Entry NOI (不增长!)
-                exit_noi = annual_noi  # 不应用租金增长
+                # Exit quarter
+                # Excel key: Exit NOI = Entry NOI (no growth!)
+                exit_noi = annual_noi  # Do not apply rent growth
                 
                 if exit_yield == 0:
                     exit_yield = 0.0001
@@ -349,20 +349,20 @@ def calculate_metrics_excel_compatible(inputs: dict, passing_rent_total: float =
                 sales_costs = gross_exit_value * sales_costs_pct
                 net_disposal_proceeds = gross_exit_value - sales_costs
                 
-                # 正常运营现金流
+                # Normal operating cash flow
                 pre_tax_cf = quarterly_ebitda - quarterly_interest
                 taxes = pre_tax_cf * tax_rate if pre_tax_cf > 0 else 0
                 cf_ops = pre_tax_cf - taxes
                 
-                # 退出季度现金流 = 运营 + 退出收益 - 债务偿还
+                # Exit quarter cash flow = Operations + Exit Proceeds - Debt Repayment
                 cf = cf_ops + net_disposal_proceeds - senior_debt
                 cash_flows.append(cf)
         
         # ========================================
-        # 计算指标 (使用XIRR和Excel公式)
+        # Calculate metrics (using XIRR and Excel formulas)
         # ========================================
         
-        # 过滤零值现金流
+        # Filter zero cash flows
         valid_cf = [(cf, dt) for cf, dt in zip(cash_flows, dates) if cf != 0]
         valid_cfs = [x[0] for x in valid_cf]
         valid_dates = [x[1] for x in valid_cf]
@@ -419,18 +419,18 @@ def calculate_metrics_excel_compatible(inputs: dict, passing_rent_total: float =
 
 def calculate_effective_noi(tenancy_data: list, model_start_date: datetime = None) -> tuple:
     """
-    计算有效NOI，基于租约有效性
+    Calculate effective NOI based on lease validity
     
-    Excel的GRI计算逻辑：
-    - 只计算在模型期间有效的租约
-    - 如果所有租约都已过期，使用最近过期的租约的租金
+    Excel's GRI calculation logic:
+    - Only counts leases valid during the model period
+    - If all leases have expired, uses the most recently expired lease's rent
     
     Args:
-        tenancy_data: 租户数据列表
-        model_start_date: 模型开始日期
+        tenancy_data: List of tenant data
+        model_start_date: Model start date
         
     Returns:
-        (effective_noi, explanation): 有效NOI和说明
+        (effective_noi, explanation): Effective NOI and explanation string
     """
     if model_start_date is None:
         today = datetime.now()
@@ -460,11 +460,11 @@ def calculate_effective_noi(tenancy_data: list, model_start_date: datetime = Non
         tenant_name = tenant.get('name', 'Unknown')
         
         if lease_end and lease_end >= model_start_date:
-            # 租约在模型期间有效
+            # Lease is valid during model period
             effective_rent += current_rent
             effective_tenants.append(tenant_name)
         elif lease_end:
-            # 租约过期，记录最近过期的
+            # Lease expired, record the most recently expired
             if latest_expired_date is None or lease_end > latest_expired_date:
                 latest_expired_date = lease_end
                 latest_expired_rent = current_rent
@@ -473,11 +473,11 @@ def calculate_effective_noi(tenancy_data: list, model_start_date: datetime = Non
     if effective_rent > 0:
         return effective_rent, f"Active leases: {', '.join(effective_tenants)}"
     elif latest_expired_rent > 0:
-        # 如果所有租约都过期，使用最近过期的租约的租金
-        # 这与Excel的GRI计算逻辑一致
+        # If all leases expired, use the most recently expired lease's rent
+        # This is consistent with Excel's GRI calculation logic
         return latest_expired_rent, f"Using most recent lease ({latest_expired_tenant}, expired {latest_expired_date.strftime('%Y-%m-%d') if latest_expired_date else 'N/A'})"
     else:
-        # 如果没有租约数据，使用总租金
+        # If no lease data, use total rent
         total = sum(float(t.get('current_rent', 0) or 0) for t in tenancy_data)
         return total, "Using total passing rent (no valid lease dates)"
 
@@ -555,12 +555,12 @@ def build_model(state: DealState):
         ]
         rr_rows.append(row)
 
-    # 计算有效NOI (与Excel GRI逻辑一致)
+    # Calculate effective NOI (consistent with Excel GRI logic)
     effective_noi, noi_explanation = calculate_effective_noi(tenancy_data)
     print(f"Effective NOI: €{effective_noi:,.0f} ({noi_explanation})", flush=True)
     
     # Calculate Metrics using Excel-compatible calculation (quarterly cash flows + XIRR)
-    # 使用有效NOI而不是total_passing_rent
+    # Use effective NOI instead of total_passing_rent
     metrics = calculate_metrics_excel_compatible(inputs, passing_rent_total=effective_noi)
     loan_amount_calc = metrics.get('debug', {}).get('loan_amount', 0)
     equity_invested_calc = metrics.get('debug', {}).get('equity_invested', 0)

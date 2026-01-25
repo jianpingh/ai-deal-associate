@@ -3,7 +3,7 @@ import os
 
 output_path = os.path.abspath(r'backend/data/templates/AUTO_CALCULATED.xlsx')
 
-print("=== 检查Cash Flows sheet的实际内容 ===\n")
+print("=== Check Cash Flows sheet actual content ===\n")
 
 try:
     excel = win32com.client.Dispatch("Excel.Application")
@@ -13,13 +13,13 @@ try:
     workbook = excel.Workbooks.Open(output_path)
     cash_flows = workbook.Sheets("Cash Flows")
     
-    print("检查105-110行的B和C列:")
+    print("Check rows 105-110 columns B and C:")
     for row in range(105, 111):
         b_val = cash_flows.Range(f"B{row}").Value
         c_val = cash_flows.Range(f"C{row}").Value
         print(f"Row {row}: B={b_val}, C={c_val}")
     
-    print("\n搜索包含'Equity'的单元格:")
+    print("\nSearch for cells containing 'Equity':")
     used_range = cash_flows.UsedRange
     for row in range(1, min(used_range.Rows.Count + 1, 150)):
         for col in ['B', 'C', 'D', 'E', 'F']:
