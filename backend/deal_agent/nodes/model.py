@@ -630,21 +630,20 @@ def build_model(state: DealState):
     )
 
     response_content = (
-        "✅ **Financial Model Built Successfully**\n\n"
-        "**⚙ Model Inputs Configured:**\n"
+        "The Excel model is built.\n\n"
+        "**Model Inputs Configured:**\n"
         f"- Total Passing Rent: €{total_passing_rent:,.0f}\n"
         f"- Leasable Area: {inputs['area']:,.0f} SQM\n"
         f"- Market Rent (ERV): €{inputs['market_rent']}/SQM\n"
         f"- Entry Cap Rate: {inputs['entry_yield']*100:.2f}%\n"
         f"- Exit Cap Rate: {inputs['exit_yield']*100:.2f}%\n"
-        f"- **LTV: {inputs['ltv']*100:.0f}%** (Money Page E43)\n"
+        f"- LTV: {inputs['ltv']*100:.0f}%\n"
         f"- Interest Rate: {inputs['interest_rate']*100:.2f}%\n"
         f"- Hold Period: {inputs['hold_period']} years\n\n"
-        "**📊 Calculated Results (Excel-Compatible):**\n"
+        "**Key Result**:\n"
         f"- **Equity Invested**: {equity_invested_display}\n"
         f"- **Levered IRR**: {levered_irr_display}\n"
-        f"- **Levered Multiple**: {levered_multiple_display}\n"
-        f"- **Net Gain / (Loss)**: {net_gain_loss_display}\n\n"
+        f"- **Levered Multiple**: {levered_multiple_display}\n\n"
         f"{download_link}\n\n"
         f"{metrics_note}"
     )
