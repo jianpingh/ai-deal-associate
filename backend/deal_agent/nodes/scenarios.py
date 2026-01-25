@@ -308,7 +308,7 @@ def rebuild_model_for_scenario(state: DealState):
             s3_url = upload_to_s3_and_get_link(template_path, s3_object_name)
             
             if s3_url:
-                download_link = f"📥 **[Download {scenario_name}]({s3_url})**"
+                download_link = f"📥 **[Download Financial Model]({s3_url})**"
     except Exception as e:
         print(f"Error generating scenario Excel: {e}")
 

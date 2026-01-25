@@ -617,6 +617,7 @@ def build_model(state: DealState):
     equity_invested_display = f"€{equity_invested_calc:,.0f}" if equity_invested_calc else "N/A"
     levered_irr_display = f"{metrics['irr']*100:.2f}%" if metrics['irr'] else "N/A"
     levered_multiple_display = f"{metrics['equity_multiple']:.2f}x" if metrics['equity_multiple'] else "N/A"
+    yield_on_cost_display = f"{metrics['yield_on_cost']*100:.2f}%" if metrics.get('yield_on_cost') else "N/A"
     net_gain_loss_display = f"€{metrics['net_gain_loss']:,.0f}" if metrics.get('net_gain_loss') else "N/A"
     
     metrics_note = "💡 *Results calculated using Python (Excel-compatible logic: XIRR + quarterly cash flows)*"
@@ -643,7 +644,8 @@ def build_model(state: DealState):
         "**Key Result**:\n"
         f"- **Equity Invested**: {equity_invested_display}\n"
         f"- **Levered IRR**: {levered_irr_display}\n"
-        f"- **Levered Multiple**: {levered_multiple_display}\n\n"
+        f"- **Levered Multiple**: {levered_multiple_display}\n"
+        f"- **Yield on Cost at Stabilisation**: {yield_on_cost_display}\n\n"
         f"{download_link}\n\n"
         f"{metrics_note}"
     )
