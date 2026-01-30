@@ -98,7 +98,8 @@ def get_langgraph_headers():
 @app.post("/api/langgraph/threads")
 async def create_thread():
     """Create a new conversation thread"""
-    async with httpx.AsyncClient() as client:
+    # trust_env=False prevents checking for proxies which often causes issues with localhost interaction
+    async with httpx.AsyncClient(trust_env=False) as client:
         response = await client.post(
             f"{LANGGRAPH_API_URL}/threads",
             headers=get_langgraph_headers(),
@@ -111,7 +112,7 @@ async def create_thread():
 @app.get("/api/langgraph/threads/{thread_id}/state")
 async def get_thread_state(thread_id: str):
     """Get thread state"""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(trust_env=False) as client:
         response = await client.get(
             f"{LANGGRAPH_API_URL}/threads/{thread_id}/state",
             headers=get_langgraph_headers(),
@@ -124,7 +125,7 @@ async def get_thread_state(thread_id: str):
 async def update_thread_state(thread_id: str, request: Request):
     """Update thread state"""
     body = await request.json()
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(trust_env=False) as client:
         response = await client.post(
             f"{LANGGRAPH_API_URL}/threads/{thread_id}/state",
             headers=get_langgraph_headers(),
@@ -140,7 +141,7 @@ async def create_run(thread_id: str, request: Request):
     body = await request.json()
     body["assistant_id"] = body.get("assistant_id", LANGGRAPH_ASSISTANT_ID)
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(trust_env=False) as client:
         response = await client.post(
             f"{LANGGRAPH_API_URL}/threads/{thread_id}/runs",
             headers=get_langgraph_headers(),
@@ -156,7 +157,7 @@ async def wait_for_run(thread_id: str, request: Request):
     body = await request.json()
     body["assistant_id"] = body.get("assistant_id", LANGGRAPH_ASSISTANT_ID)
     
-    async with httpx.AsyncClient(timeout=300.0) as client:  # 5 minute timeout
+    async with httpx.AsyncClient(timeout=300.0, trust_env=False) as client:  # 5 minute timeout
         response = await client.post(
             f"{LANGGRAPH_API_URL}/threads/{thread_id}/runs/wait",
             headers=get_langgraph_headers(),
@@ -173,7 +174,7 @@ async def stream_run(thread_id: str, request: Request):
     body["assistant_id"] = body.get("assistant_id", LANGGRAPH_ASSISTANT_ID)
     
     async def generate():
-        async with httpx.AsyncClient(timeout=300.0) as client:
+        async with httpx.AsyncClient(timeout=300.0, trust_env=False) as client:
             async with client.stream(
                 "POST",
                 f"{LANGGRAPH_API_URL}/threads/{thread_id}/runs/stream",
@@ -197,7 +198,7 @@ async def stream_run(thread_id: str, request: Request):
 @app.get("/api/langgraph/assistants")
 async def get_assistants():
     """Get available assistants"""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(trust_env=False) as client:
         response = await client.post(
             f"{LANGGRAPH_API_URL}/assistants/search",
             headers=get_langgraph_headers(),
