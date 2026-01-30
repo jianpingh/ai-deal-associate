@@ -20,9 +20,21 @@ from api.models import Deal, Asset
 app = FastAPI(title="AI Deal Associate API", version="1.0.0")
 
 # CORS Configuration
+# Allow frontend origins from environment variable or use defaults
+ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",") if os.getenv("ALLOWED_ORIGINS") else []
+DEFAULT_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    # Vercel production domain
+    "https://ai-deal-associate-u8hv.vercel.app",
+    # Vercel preview domains
+    "https://ai-deal-associate-u8hv-*.vercel.app",
+]
+ALL_ORIGINS = list(set(DEFAULT_ORIGINS + ALLOWED_ORIGINS))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],  # Next.js dev server
+    allow_origins=ALL_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
