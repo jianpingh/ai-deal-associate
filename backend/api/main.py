@@ -1,35 +1,48 @@
 from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from sqlmodel import Session, select
 from typing import List, Optional
 from dotenv import load_dotenv
 import httpx
 import os
 import json
 import traceback
+import sys
 
 # Load environment variables from .env file
 load_dotenv()
 
-print("INFO: Starting AI Deal Associate API...")
+print("INFO: Starting AI Deal Associate API...", flush=True)
+print(f"INFO: Python version: {sys.version}", flush=True)
 
-# Import database session and models
-# Note: In a real project, use absolute imports assuming 'backend' is in PYTHONPATH check logic
-# But for typical simplified structure inside backend/:
-try:
-    from api.database import get_session, engine
-    from api.models import Deal, Asset
-    print("INFO: Database modules imported successfully")
-except Exception as e:
-    print(f"ERROR: Failed to import database modules: {e}")
-    traceback.print_exc()
-    # Create dummy functions so app can still start
-    def get_session():
-        raise HTTPException(status_code=503, detail="Database not available")
-    engine = None
-    Deal = None
-    Asset = None
+# Delay database imports to avoid startup crashes
+engine = None
+Deal = None
+Asset = None
+get_session = None
+Session = None
+select = None
+
+def _load_database_modules():
+    global engine, Deal, Asset, get_session, Session, select
+    if get_session is not None:
+        return True
+    try:
+        from sqlmodel import Session as _Session, select as _select
+        from api.database import get_session as _get_session, engine as _engine
+        from api.models import Deal as _Deal, Asset as _Asset
+        Session = _Session
+        select = _select
+        get_session = _get_session
+        engine = _engine
+        Deal = _Deal
+        Asset = _Asset
+        print("INFO: Database modules loaded successfully", flush=True)
+        return True
+    except Exception as e:
+        print(f"ERROR: Failed to load database modules: {e}", flush=True)
+        traceback.print_exc()
+        return False
 
 app = FastAPI(title="AI Deal Associate API", version="1.0.0")
 
@@ -69,24 +82,31 @@ def health_check():
 
 # --- Deal Endpoints ---
 
-@app.post("/deals/", response_model=Deal)
-def create_deal(deal: Deal, session: Session = Depends(get_session)):
+def _get_db_session():
+    """Helper to get database session with lazy loading"""
+    if not _load_database_modules():
+        raise HTTPException(status_code=503, detail="Database not available")
+    return get_session()
+
+@app.post("/deals/")
+def create_deal(deal_data: dict, session = Depends(_get_db_session)):
+    deal = Deal(**deal_data)
     session.add(deal)
     session.commit()
     session.refresh(deal)
     return deal
 
-@app.get("/deals/", response_model=List[Deal])
+@app.get("/deals/")
 def read_deals(
     offset: int = 0, 
     limit: int = Query(default=100, le=100), 
-    session: Session = Depends(get_session)
+    session = Depends(_get_db_session)
 ):
     deals = session.exec(select(Deal).offset(offset).limit(limit)).all()
     return deals
 
-@app.get("/deals/{deal_id}", response_model=Deal)
-def read_deal(deal_id: int, session: Session = Depends(get_session)):
+@app.get("/deals/{deal_id}")
+def read_deal(deal_id: int, session = Depends(_get_db_session)):
     deal = session.get(Deal, deal_id)
     if not deal:
         raise HTTPException(status_code=404, detail="Deal not found")
@@ -94,8 +114,9 @@ def read_deal(deal_id: int, session: Session = Depends(get_session)):
 
 # --- Asset Endpoints ---
 
-@app.post("/assets/", response_model=Asset)
-def create_asset(asset: Asset, session: Session = Depends(get_session)):
+@app.post("/assets/")
+def create_asset(asset_data: dict, session = Depends(_get_db_session)):
+    asset = Asset(**asset_data)
     session.add(asset)
     session.commit()
     session.refresh(asset)
