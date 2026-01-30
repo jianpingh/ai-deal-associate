@@ -7,15 +7,29 @@ from dotenv import load_dotenv
 import httpx
 import os
 import json
+import traceback
 
 # Load environment variables from .env file
 load_dotenv()
 
+print("INFO: Starting AI Deal Associate API...")
+
 # Import database session and models
 # Note: In a real project, use absolute imports assuming 'backend' is in PYTHONPATH check logic
 # But for typical simplified structure inside backend/:
-from api.database import get_session
-from api.models import Deal, Asset
+try:
+    from api.database import get_session, engine
+    from api.models import Deal, Asset
+    print("INFO: Database modules imported successfully")
+except Exception as e:
+    print(f"ERROR: Failed to import database modules: {e}")
+    traceback.print_exc()
+    # Create dummy functions so app can still start
+    def get_session():
+        raise HTTPException(status_code=503, detail="Database not available")
+    engine = None
+    Deal = None
+    Asset = None
 
 app = FastAPI(title="AI Deal Associate API", version="1.0.0")
 

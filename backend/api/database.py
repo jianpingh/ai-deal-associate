@@ -13,9 +13,20 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 engine = None
 
 if DATABASE_URL:
-    # Create engine
-    # echo=True to see SQL queries in logs (set to False in production)
-    engine = create_engine(DATABASE_URL, echo=False)
+    try:
+        # Create engine with SSL settings for Neon
+        # Remove channel_binding parameter if present (causes issues)
+        connect_args = {"sslmode": "require"}
+        engine = create_engine(
+            DATABASE_URL, 
+            echo=False,
+            connect_args=connect_args,
+            pool_pre_ping=True  # Test connection before using
+        )
+        print(f"INFO: Database engine created successfully")
+    except Exception as e:
+        print(f"ERROR: Failed to create database engine: {e}")
+        engine = None
 else:
     print("WARNING: DATABASE_URL is not set. Database features will be disabled.")
 
