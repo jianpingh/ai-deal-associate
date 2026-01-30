@@ -122,9 +122,10 @@ def create_asset(asset_data: dict, session = Depends(_get_db_session)):
     session.refresh(asset)
     return asset
 
-@app.get("/deals/{deal_id}/assets/", response_model=List[Asset])
-def read_deal_assets(deal_id: int, session: Session = Depends(get_session)):
+@app.get("/deals/{deal_id}/assets/")
+def read_deal_assets(deal_id: int, session = Depends(_get_db_session)):
     # Since we removed Foreign Keys, we just query by the integer column
+    _load_database_modules()  # Ensure modules are loaded
     statement = select(Asset).where(Asset.deal_id == deal_id)
     assets = session.exec(statement).all()
     return assets
