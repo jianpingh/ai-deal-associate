@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
+from fastapi.exceptions import RequestValidationError
 from typing import List, Optional
 from dotenv import load_dotenv
 import httpx
@@ -8,6 +9,15 @@ import os
 import json
 import traceback
 import sys
+
+# Import unified response schema
+from api.schemas import (
+    Response, ErrorCode, 
+    MessageResponse, HealthResponse,
+    DealResponse, DealListResponse,
+    AssetResponse, AssetListResponse,
+    ValidationErrorResponse
+)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -44,7 +54,60 @@ def _load_database_modules():
         traceback.print_exc()
         return False
 
-app = FastAPI(title="AI Deal Associate API", version="1.0.0")
+# Custom responses to override FastAPI default 422 validation error format
+custom_responses = {
+    422: {
+        "description": "Validation Error",
+        "model": ValidationErrorResponse,
+        "content": {
+            "application/json": {
+                "example": {
+                    "code": 400,
+                    "msg": "Validation error",
+                    "data": [
+                        {"loc": ["body", "name"], "msg": "field required", "type": "value_error.missing"}
+                    ]
+                }
+            }
+        }
+    }
+}
+
+app = FastAPI(
+    title="AI Deal Associate API", 
+    version="1.0.0",
+    responses=custom_responses  # Apply unified format to all endpoints
+)
+
+# ============================================================
+# Global Exception Handlers
+# ============================================================
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle validation errors with unified response format"""
+    return JSONResponse(
+        status_code=200,
+        content=Response.error(
+            code=ErrorCode.PARAM_ERROR,
+            msg="Validation error",
+            data=exc.errors()
+        ).model_dump()
+    )
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Handle unexpected errors with unified response format"""
+    # Skip for LangGraph proxy endpoints (they return raw responses)
+    if request.url.path.startswith("/api/langgraph"):
+        raise exc
+    return JSONResponse(
+        status_code=200,
+        content=Response.error(
+            code=ErrorCode.SERVER_ERROR,
+            msg=str(exc)
+        ).model_dump()
+    )
 
 # CORS Configuration
 # Allow frontend origins from environment variable or use defaults
@@ -72,15 +135,23 @@ LANGGRAPH_API_URL = os.getenv("LANGGRAPH_API_URL")
 LANGGRAPH_API_KEY = os.getenv("LANGGRAPH_API_KEY")
 LANGGRAPH_ASSISTANT_ID = os.getenv("LANGGRAPH_ASSISTANT_ID", "agent")
 
-@app.get("/")
+# ============================================================
+# Basic Endpoints (Unified Response Format)
+# ============================================================
+
+@app.get("/", response_model=MessageResponse)
 def read_root():
-    return {"message": "Welcome to AI Deal Associate API"}
+    """Root endpoint - returns welcome message"""
+    return Response.success(data={"message": "Welcome to AI Deal Associate API"})
 
-@app.get("/health")
+@app.get("/health", response_model=HealthResponse)
 def health_check():
-    return {"status": "ok"}
+    """Health check endpoint"""
+    return Response.success(data={"status": "ok"})
 
-# --- Deal Endpoints ---
+# ============================================================
+# Deal Endpoints (Unified Response Format)
+# ============================================================
 
 def _get_db_session():
     """Helper to get database session with lazy loading"""
@@ -88,51 +159,71 @@ def _get_db_session():
         raise HTTPException(status_code=503, detail="Database not available")
     return get_session()
 
-@app.post("/deals/")
+@app.post("/deals/", response_model=DealResponse)
 def create_deal(deal_data: dict, session = Depends(_get_db_session)):
-    deal = Deal(**deal_data)
-    session.add(deal)
-    session.commit()
-    session.refresh(deal)
-    return deal
+    """Create a new deal"""
+    try:
+        deal = Deal(**deal_data)
+        session.add(deal)
+        session.commit()
+        session.refresh(deal)
+        return Response.success(data=deal, msg="Deal created successfully")
+    except Exception as e:
+        return Response.error(code=ErrorCode.DB_ERROR, msg=str(e))
 
-@app.get("/deals/")
+@app.get("/deals/", response_model=DealListResponse)
 def read_deals(
     offset: int = 0, 
     limit: int = Query(default=100, le=100), 
     session = Depends(_get_db_session)
 ):
-    deals = session.exec(select(Deal).offset(offset).limit(limit)).all()
-    return deals
+    """Get list of deals with pagination"""
+    try:
+        deals = session.exec(select(Deal).offset(offset).limit(limit)).all()
+        return Response.success(data=deals)
+    except Exception as e:
+        return Response.error(code=ErrorCode.DB_ERROR, msg=str(e))
 
-@app.get("/deals/{deal_id}")
+@app.get("/deals/{deal_id}", response_model=DealResponse)
 def read_deal(deal_id: int, session = Depends(_get_db_session)):
+    """Get a specific deal by ID"""
     deal = session.get(Deal, deal_id)
     if not deal:
-        raise HTTPException(status_code=404, detail="Deal not found")
-    return deal
+        return Response.error(code=ErrorCode.NOT_FOUND, msg="Deal not found")
+    return Response.success(data=deal)
 
-# --- Asset Endpoints ---
+# ============================================================
+# Asset Endpoints (Unified Response Format)
+# ============================================================
 
-@app.post("/assets/")
+@app.post("/assets/", response_model=AssetResponse)
 def create_asset(asset_data: dict, session = Depends(_get_db_session)):
-    asset = Asset(**asset_data)
-    session.add(asset)
-    session.commit()
-    session.refresh(asset)
-    return asset
+    """Create a new asset"""
+    try:
+        asset = Asset(**asset_data)
+        session.add(asset)
+        session.commit()
+        session.refresh(asset)
+        return Response.success(data=asset, msg="Asset created successfully")
+    except Exception as e:
+        return Response.error(code=ErrorCode.DB_ERROR, msg=str(e))
 
-@app.get("/deals/{deal_id}/assets/")
+@app.get("/deals/{deal_id}/assets/", response_model=AssetListResponse)
 def read_deal_assets(deal_id: int, session = Depends(_get_db_session)):
-    # Since we removed Foreign Keys, we just query by the integer column
-    _load_database_modules()  # Ensure modules are loaded
-    statement = select(Asset).where(Asset.deal_id == deal_id)
-    assets = session.exec(statement).all()
-    return assets
+    """Get all assets for a specific deal"""
+    try:
+        _load_database_modules()  # Ensure modules are loaded
+        statement = select(Asset).where(Asset.deal_id == deal_id)
+        assets = session.exec(statement).all()
+        return Response.success(data=assets)
+    except Exception as e:
+        return Response.error(code=ErrorCode.DB_ERROR, msg=str(e))
 
 
 # ============================================================
-# LangGraph API Proxy Endpoints
+# LangGraph API Proxy Endpoints (Raw Response - No Wrapper)
+# These endpoints proxy to LangGraph Cloud API directly.
+# They return raw LangGraph responses to maintain SDK compatibility.
 # ============================================================
 
 def get_langgraph_headers():
