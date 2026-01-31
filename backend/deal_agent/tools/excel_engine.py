@@ -237,3 +237,66 @@ def write_list_to_excel(file_path: str, sheet_name: str, data: List[List[Any]], 
         return f"Successfully wrote {len(data)} rows to sheet '{sheet_name}'."
     except Exception as e:
         return f"Error writing list to Excel: {str(e)}"
+
+
+def batch_update_excel(file_path: str, rent_roll_data: List[List[Any]] = None, 
+                       rent_roll_sheet: str = "Input Rent Roll",
+                       cell_updates: Dict[str, Any] = None) -> str:
+    """
+    Optimized batch update: Opens Excel file once, performs all updates, saves once.
+    
+    This is significantly faster than calling write_list_to_excel and update_financial_model
+    separately, as each of those opens/saves the file.
+    
+    Args:
+        file_path: Absolute path to the Excel file.
+        rent_roll_data: List of rows to write to rent roll sheet (optional).
+        rent_roll_sheet: Name of the rent roll sheet. Default is "Input Rent Roll".
+        cell_updates: Dictionary of cell updates {cell_ref: value} (optional).
+        
+    Returns:
+        Status message with details of updates performed.
+    """
+    try:
+        import time
+        start_time = time.time()
+        
+        # Open workbook once
+        wb = openpyxl.load_workbook(file_path)
+        results = []
+        
+        # 1. Write rent roll data if provided
+        if rent_roll_data:
+            if rent_roll_sheet in wb.sheetnames:
+                ws = wb[rent_roll_sheet]
+                for r_idx, row_data in enumerate(rent_roll_data):
+                    for c_idx, value in enumerate(row_data):
+                        ws.cell(row=2 + r_idx, column=1 + c_idx, value=value)
+                results.append(f"Rent Roll: {len(rent_roll_data)} rows")
+            else:
+                results.append(f"Warning: Sheet '{rent_roll_sheet}' not found")
+        
+        # 2. Apply cell updates if provided
+        if cell_updates:
+            updated_count = 0
+            for cell_ref, value in cell_updates.items():
+                if "!" in cell_ref:
+                    sheet_name, cell_addr = cell_ref.split("!")
+                    if sheet_name in wb.sheetnames:
+                        ws = wb[sheet_name]
+                        ws[cell_addr] = value
+                        updated_count += 1
+                else:
+                    ws = wb.active
+                    ws[cell_ref] = value
+                    updated_count += 1
+            results.append(f"Cells updated: {updated_count}")
+        
+        # 3. Save once
+        wb.save(file_path)
+        
+        elapsed = time.time() - start_time
+        return f"Batch update completed in {elapsed:.2f}s: {', '.join(results)}"
+        
+    except Exception as e:
+        return f"Error in batch update: {str(e)}"

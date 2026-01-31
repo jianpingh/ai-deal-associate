@@ -1,6 +1,6 @@
 from langchain_core.messages import AIMessage
 from deal_agent.state import DealState
-from deal_agent.tools.excel_engine import fill_excel_named_ranges, write_list_to_excel, update_financial_model
+from deal_agent.tools.excel_engine import fill_excel_named_ranges, write_list_to_excel, update_financial_model, batch_update_excel
 from deal_agent.tools.s3_utils import upload_to_s3_and_get_link
 import os
 import time
@@ -565,22 +565,14 @@ def build_model(state: DealState):
     loan_amount_calc = metrics.get('debug', {}).get('loan_amount', 0)
     equity_invested_calc = metrics.get('debug', {}).get('equity_invested', 0)
 
-    # 2. Perform Excel Operations
+    # 2. Perform Excel Operations (OPTIMIZED: single open/save)
     download_link = ""
     log_detail = ""
     
     if os.path.exists(TEMPLATE_PATH):
         try:
-            write_list_to_excel.invoke({
-                "file_path": TEMPLATE_PATH,
-                "sheet_name": "Input Rent Roll",
-                "data": rr_rows,
-                "start_row": 2,
-                "start_col": 1
-            })
-            log_detail += " | Filled Rent Roll"
-            
-            updates = {
+            # Prepare all updates for batch operation
+            cell_updates = {
                 "Input Other!B1": inputs["project_name"],
                 "Input Other!B4": inputs["hold_period"],
                 "Input Other!B5": inputs["market_rent"],
@@ -592,11 +584,14 @@ def build_model(state: DealState):
                 "Money Page!E43": inputs["ltv"]  # LTV percentage (e.g., 0.60 for 60%)
             }
             
-            update_financial_model.invoke({
-                "file_path": TEMPLATE_PATH,
-                "updates": updates
-            })
-            log_detail += f" | Filled Assumptions"
+            # Single batch update: opens file once, writes everything, saves once
+            batch_result = batch_update_excel(
+                file_path=TEMPLATE_PATH,
+                rent_roll_data=rr_rows,
+                rent_roll_sheet="Input Rent Roll",
+                cell_updates=cell_updates
+            )
+            log_detail = f" | {batch_result}"
             log_detail += f" | Effective NOI: €{effective_noi:,.0f}"
             
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
