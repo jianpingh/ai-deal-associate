@@ -73,10 +73,19 @@ custom_responses = {
     }
 }
 
+# OpenAPI Tags for categorization
+tags_metadata = [
+    {"name": "Health", "description": "Health check and root endpoints"},
+    {"name": "Deals", "description": "Deal management operations"},
+    {"name": "Assets", "description": "Asset management operations"},
+    {"name": "LangGraph", "description": "LangGraph Cloud API proxy endpoints"},
+]
+
 app = FastAPI(
     title="AI Deal Associate API", 
     version="1.0.0",
-    responses=custom_responses  # Apply unified format to all endpoints
+    responses=custom_responses,
+    openapi_tags=tags_metadata
 )
 
 # ============================================================
@@ -139,12 +148,12 @@ LANGGRAPH_ASSISTANT_ID = os.getenv("LANGGRAPH_ASSISTANT_ID", "agent")
 # Basic Endpoints (Unified Response Format)
 # ============================================================
 
-@app.get("/", response_model=MessageResponse)
+@app.get("/", response_model=MessageResponse, tags=["Health"])
 def read_root():
     """Root endpoint - returns welcome message"""
     return Response.success(data={"message": "Welcome to AI Deal Associate API"})
 
-@app.get("/health", response_model=HealthResponse)
+@app.get("/health", response_model=HealthResponse, tags=["Health"])
 def health_check():
     """Health check endpoint"""
     return Response.success(data={"status": "ok"})
@@ -159,7 +168,7 @@ def _get_db_session():
         raise HTTPException(status_code=503, detail="Database not available")
     return get_session()
 
-@app.post("/deals/", response_model=DealResponse)
+@app.post("/deals/", response_model=DealResponse, tags=["Deals"])
 def create_deal(deal_data: dict, session = Depends(_get_db_session)):
     """Create a new deal"""
     try:
@@ -171,7 +180,7 @@ def create_deal(deal_data: dict, session = Depends(_get_db_session)):
     except Exception as e:
         return Response.error(code=ErrorCode.DB_ERROR, msg=str(e))
 
-@app.get("/deals/", response_model=DealListResponse)
+@app.get("/deals/", response_model=DealListResponse, tags=["Deals"])
 def read_deals(
     offset: int = 0, 
     limit: int = Query(default=100, le=100), 
@@ -184,7 +193,7 @@ def read_deals(
     except Exception as e:
         return Response.error(code=ErrorCode.DB_ERROR, msg=str(e))
 
-@app.get("/deals/{deal_id}", response_model=DealResponse)
+@app.get("/deals/{deal_id}", response_model=DealResponse, tags=["Deals"])
 def read_deal(deal_id: int, session = Depends(_get_db_session)):
     """Get a specific deal by ID"""
     deal = session.get(Deal, deal_id)
@@ -196,7 +205,7 @@ def read_deal(deal_id: int, session = Depends(_get_db_session)):
 # Asset Endpoints (Unified Response Format)
 # ============================================================
 
-@app.post("/assets/", response_model=AssetResponse)
+@app.post("/assets/", response_model=AssetResponse, tags=["Assets"])
 def create_asset(asset_data: dict, session = Depends(_get_db_session)):
     """Create a new asset"""
     try:
@@ -208,7 +217,7 @@ def create_asset(asset_data: dict, session = Depends(_get_db_session)):
     except Exception as e:
         return Response.error(code=ErrorCode.DB_ERROR, msg=str(e))
 
-@app.get("/deals/{deal_id}/assets/", response_model=AssetListResponse)
+@app.get("/deals/{deal_id}/assets/", response_model=AssetListResponse, tags=["Assets"])
 def read_deal_assets(deal_id: int, session = Depends(_get_db_session)):
     """Get all assets for a specific deal"""
     try:
@@ -234,7 +243,7 @@ def get_langgraph_headers():
     }
 
 
-@app.post("/api/langgraph/threads")
+@app.post("/api/langgraph/threads", tags=["LangGraph"])
 async def create_thread():
     """Create a new conversation thread"""
     # trust_env=False prevents checking for proxies which often causes issues with localhost interaction
@@ -248,7 +257,7 @@ async def create_thread():
         return response.json()
 
 
-@app.get("/api/langgraph/threads/{thread_id}/state")
+@app.get("/api/langgraph/threads/{thread_id}/state", tags=["LangGraph"])
 async def get_thread_state(thread_id: str):
     """Get thread state"""
     async with httpx.AsyncClient(trust_env=False) as client:
@@ -260,7 +269,7 @@ async def get_thread_state(thread_id: str):
         return response.json()
 
 
-@app.post("/api/langgraph/threads/{thread_id}/state")
+@app.post("/api/langgraph/threads/{thread_id}/state", tags=["LangGraph"])
 async def update_thread_state(thread_id: str, request: Request):
     """Update thread state"""
     body = await request.json()
@@ -274,7 +283,7 @@ async def update_thread_state(thread_id: str, request: Request):
         return response.json()
 
 
-@app.post("/api/langgraph/threads/{thread_id}/runs")
+@app.post("/api/langgraph/threads/{thread_id}/runs", tags=["LangGraph"])
 async def create_run(thread_id: str, request: Request):
     """Create a run"""
     body = await request.json()
@@ -290,7 +299,7 @@ async def create_run(thread_id: str, request: Request):
         return response.json()
 
 
-@app.post("/api/langgraph/threads/{thread_id}/runs/wait")
+@app.post("/api/langgraph/threads/{thread_id}/runs/wait", tags=["LangGraph"])
 async def wait_for_run(thread_id: str, request: Request):
     """Wait for run to complete"""
     body = await request.json()
@@ -306,7 +315,7 @@ async def wait_for_run(thread_id: str, request: Request):
         return response.json()
 
 
-@app.post("/api/langgraph/threads/{thread_id}/runs/stream")
+@app.post("/api/langgraph/threads/{thread_id}/runs/stream", tags=["LangGraph"])
 async def stream_run(thread_id: str, request: Request):
     """Stream run"""
     body = await request.json()
@@ -334,7 +343,7 @@ async def stream_run(thread_id: str, request: Request):
     )
 
 
-@app.get("/api/langgraph/assistants")
+@app.get("/api/langgraph/assistants", tags=["LangGraph"])
 async def get_assistants():
     """Get available assistants"""
     async with httpx.AsyncClient(trust_env=False) as client:
