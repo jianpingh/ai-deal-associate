@@ -49,7 +49,7 @@ class AssetService:
     
     def update_asset(self, asset_id: int, data: AssetUpdate) -> Optional[Asset]:
         """Update an asset"""
-        asset = self.repo.get_by_id(asset_id)
+        asset = self.repo.get_byid(asset_id)
         if not asset:
             return None
         

@@ -4,7 +4,8 @@ Document Model
 
 from typing import Optional
 from datetime import datetime
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Column
+from sqlalchemy import JSON
 
 
 class Document(SQLModel, table=True):
@@ -13,7 +14,36 @@ class Document(SQLModel, table=True):
     
     id: Optional[int] = Field(default=None, primary_key=True)
     deal_id: int = Field(index=True)
+    asset_id: Optional[int] = Field(default=None, index=True)
+    
+    # File info
     filename: str
-    file_type: str  # pdf, xlsx, etc.
+    original_filename: Optional[str] = None
+    file_type: str  # pdf, xlsx, docx, csv, jpg, png
+    file_size: Optional[int] = None  # bytes
+    
+    # Storage
     s3_path: str
+    s3_bucket: Optional[str] = None
+    
+    # Classification
+    doc_category: Optional[str] = None  # OM, Rent Roll, T12, Financials, Photos, Legal, Other
+    doc_subcategory: Optional[str] = None
+    
+    # Processing
+    processing_status: str = Field(default="pending")  # pending, processing, completed, failed
+    processing_error: Optional[str] = None
+    
+    # Extracted data
+    extracted_data: Optional[dict] = Field(default=None, sa_column=Column(JSON))
+    extracted_text: Optional[str] = None  # OCR/parsed text
+    page_count: Optional[int] = None
+    
+    # Metadata
+    description: Optional[str] = None
+    tags: Optional[dict] = Field(default=None, sa_column=Column(JSON))  # ["rent_roll", "2024"]
+    
+    # Audit
+    uploaded_by: Optional[int] = None  # FK → users
     uploaded_at: datetime = Field(default_factory=datetime.utcnow)
+    processed_at: Optional[datetime] = None
