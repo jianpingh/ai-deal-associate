@@ -17,7 +17,7 @@ from schemas import (
 )
 
 
-router = APIRouter(prefix="/assets", tags=["assets"])
+router = APIRouter(prefix="/assets", tags=["Assets"])
 
 
 @router.get("", response_model=AssetListResponse, summary="Get all assets")

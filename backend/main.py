@@ -54,19 +54,23 @@ async def lifespan(app: FastAPI):
 # OpenAPI Tags for documentation
 tags_metadata = [
     {
-        "name": "health",
+        "name": "Health",
         "description": "Health check and root endpoints",
     },
     {
-        "name": "deals",
-        "description": "Deal management operations - CRUD for deals",
+        "name": "Deals",
+        "description": "Deal management operations",
     },
     {
-        "name": "assets",
-        "description": "Asset management operations - CRUD for assets",
+        "name": "Assets",
+        "description": "Asset management operations",
     },
     {
-        "name": "langgraph",
+        "name": "Users",
+        "description": "User management operations",
+    },
+    {
+        "name": "LangGraph",
         "description": "LangGraph API proxy - AI conversation endpoints",
     },
 ]
@@ -162,13 +166,13 @@ app.include_router(langgraph_router)
 # Root Endpoints
 # ============================================================
 
-@app.get("/", tags=["health"])
+@app.get("/", tags=["Health"])
 def read_root():
     """Root endpoint - returns welcome message"""
     return Response.success(data={"message": "Welcome to AI Deal Associate API"})
 
 
-@app.get("/health", tags=["health"])
+@app.get("/health", tags=["Health"])
 def health_check():
     """Health check endpoint"""
     db_status = "connected" if _db_initialized else "not_initialized"

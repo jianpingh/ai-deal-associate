@@ -6,7 +6,7 @@ API request/response schemas for User.
 
 from typing import Optional, List
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field
 from schemas.base import Response
 
 
@@ -16,18 +16,18 @@ from schemas.base import Response
 
 class UserCreate(BaseModel):
     """Schema for creating a user"""
-    email: EmailStr
-    name: str
-    password: Optional[str] = None
-    role: str = "analyst"  # admin, manager, analyst
+    email: EmailStr = Field(..., description="User's email address (required, must be unique)")
+    name: str = Field(..., min_length=1, max_length=100, description="User's full name (required)")
+    password: Optional[str] = Field(None, description="User's password (optional)")
+    role: str = Field("analyst", pattern="^(admin|manager|analyst)$", description="User's role - admin, manager, or analyst (default: analyst)")
 
 
 class UserUpdate(BaseModel):
     """Schema for updating a user"""
-    email: Optional[EmailStr] = None
-    name: Optional[str] = None
-    role: Optional[str] = None
-    is_active: Optional[bool] = None
+    email: Optional[EmailStr] = Field(None, description="User's email address")
+    name: Optional[str] = Field(None, min_length=1, max_length=100, description="User's full name")
+    role: Optional[str] = Field(None, pattern="^(admin|manager|analyst)$", description="User's role")
+    is_active: Optional[bool] = Field(None, description="Whether user is active")
 
 
 # ============================================================

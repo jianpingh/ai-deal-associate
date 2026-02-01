@@ -17,6 +17,7 @@ numpy
 numpy-financial
 sqlmodel
 psycopg2-binary
+email-validator
 scipy
 python-dateutil
 pywin32; sys_platform == 'win32'

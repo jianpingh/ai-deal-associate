@@ -17,7 +17,7 @@ from schemas import (
 )
 
 
-router = APIRouter(prefix="/deals", tags=["deals"])
+router = APIRouter(prefix="/deals", tags=["Deals"])
 
 
 @router.get("", response_model=DealListResponse, summary="Get all deals")

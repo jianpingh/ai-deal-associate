@@ -12,7 +12,7 @@ import httpx
 from core.config import settings
 
 
-router = APIRouter(prefix="/api/langgraph", tags=["langgraph"])
+router = APIRouter(prefix="/api/langgraph", tags=["LangGraph"])
 
 
 def get_langgraph_headers() -> dict:
