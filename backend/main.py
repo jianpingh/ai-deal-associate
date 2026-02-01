@@ -150,10 +150,11 @@ app.add_middleware(
 # Include Routers
 # ============================================================
 
-from api.routes import deals_router, assets_router, langgraph_router
+from api.routes import deals_router, assets_router, users_router, langgraph_router
 
 app.include_router(deals_router)
 app.include_router(assets_router)
+app.include_router(users_router)
 app.include_router(langgraph_router)
 
 
