@@ -265,12 +265,12 @@ export default function Home() {
   return (
     <div className="flex h-screen font-sans text-gray-900 bg-white">
       {/* Sidebar */}
-      <div className="flex flex-col w-64 bg-[#1a3c54] border-r border-[#153043]">
-        <div className="px-6 py-5 border-b border-[#234e6b]">
+      <div className="flex flex-col w-64 bg-canopy-dark border-r border-canopy-border">
+        <div className="px-6 py-5 border-b border-canopy-border">
           <div className="flex flex-col gap-0.5">
             <h1 className="relative w-36 h-9 flex-shrink-0 -ml-1">
                <Image 
-                 src="/logo-ca8d5c4c.svg" 
+                 src="/logo.svg" 
                  alt="GoCanopy Logo" 
                  fill
                  className="object-contain object-left" 
@@ -282,18 +282,18 @@ export default function Home() {
         <div className="p-4">
           <button
             onClick={startNewChat}
-            className="flex items-center w-full gap-2 px-4 py-2 text-white transition-colors bg-[#7dbb42] rounded-lg hover:bg-[#6aa333]"
+            className="flex items-center w-full gap-2 px-4 py-2.5 text-canopy-dark font-medium transition-colors bg-canopy-green rounded-lg hover:bg-canopy-green-dark"
           >
             <PlusCircle className="w-4 h-4" />
             New Chat
           </button>
         </div>
         <div className="flex-1 p-4 overflow-y-auto">
-          <div className="mb-2 text-xs font-semibold tracking-wider text-gray-500 uppercase">
+          <div className="mb-2 text-xs font-semibold tracking-wider text-gray-400 uppercase">
             History
           </div>
           {/* Placeholder for history items */}
-          <div className="text-sm italic text-gray-400">
+          <div className="text-sm italic text-gray-500">
             No previous chats
           </div>
         </div>
@@ -331,7 +331,7 @@ export default function Home() {
                     }`}
                   >
                     {msg.role === "assistant" && (
-                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-[#1a3c54] bg-[#1a3c54]">
+                      <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-canopy-dark bg-canopy-dark">
                         <Bot className="w-5 h-5 text-white" />
                       </div>
                     )}
@@ -399,12 +399,12 @@ export default function Home() {
             )}
             {isLoading && (
               <div className="flex justify-start gap-4">
-                 <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-[#1a3c54] bg-[#1a3c54]">
+                 <div className="flex items-center justify-center flex-shrink-0 w-8 h-8 rounded-full border border-canopy-dark bg-canopy-dark">
                       <Bot className="w-5 h-5 text-white" />
                     </div>
                 <div className="flex flex-col px-6 py-4 bg-white border border-gray-200 rounded-2xl shadow-sm">
                   <div className="flex items-center">
-                    <Loader2 className="w-5 h-5 mr-2 text-[#1a3c54] animate-spin" />
+                    <Loader2 className="w-5 h-5 mr-2 text-canopy-dark animate-spin" />
                     <span className="text-gray-600">Thinking...</span>
                   </div>
                 </div>
@@ -433,13 +433,13 @@ export default function Home() {
             <button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              className="absolute p-1.5 text-white transition-colors bg-[#1a3c54] border-2 border-[#1a3c54] rounded-full right-3 bottom-5 hover:bg-[#153043] disabled:cursor-not-allowed"
+              className="absolute p-1.5 text-white transition-colors bg-canopy-dark border-2 border-canopy-dark rounded-full right-3 bottom-5 hover:bg-canopy-darker disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ArrowUp className="w-5 h-5 stroke-2" />
             </button>
           </div>
           <div className="mt-2 text-xs text-center text-gray-500">
-            GoCanopy – AI-Powered Real Estate platform for investment analysis.
+            GoCanopy – AI-native intelligence platform for institutional real estate investors.
           </div>
         </div>
       </div>
