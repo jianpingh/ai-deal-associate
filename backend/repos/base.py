@@ -26,8 +26,8 @@ class BaseRepository(Generic[ModelType]):
         self.model = model
         self.session = session
     
-    def get_by_id(self, id: int) -> Optional[ModelType]:
-        """Get a single record by ID"""
+    def get_by_id(self, id: str) -> Optional[ModelType]:
+        """Get a single record by UUID ID"""
         return self.session.get(self.model, id)
     
     def get_all(self, offset: int = 0, limit: int = 100) -> List[ModelType]:

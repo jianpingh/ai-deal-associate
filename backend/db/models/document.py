@@ -2,6 +2,7 @@
 Document Model
 """
 
+import uuid
 from typing import Optional
 from datetime import datetime
 from sqlmodel import SQLModel, Field, Column
@@ -12,9 +13,13 @@ class Document(SQLModel, table=True):
     """Uploaded document database model"""
     __tablename__ = "documents"
     
-    id: Optional[int] = Field(default=None, primary_key=True)
-    deal_id: int = Field(index=True)
-    asset_id: Optional[int] = Field(default=None, index=True)
+    id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()), 
+        primary_key=True,
+        description="UUID primary key"
+    )
+    deal_id: str = Field(index=True)  # FK → deals.id (UUID)
+    asset_id: Optional[str] = Field(default=None, index=True)  # FK → assets.id (UUID)
     
     # File info
     filename: str

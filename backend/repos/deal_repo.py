@@ -30,3 +30,13 @@ class DealRepository(BaseRepository[Deal]):
         """Get deals for a specific client"""
         statement = select(Deal).where(Deal.client_name == client_name)
         return list(self.session.exec(statement).all())
+    
+    def get_by_user(self, user_id: str, offset: int = 0, limit: int = 100) -> List[Deal]:
+        """Get deals owned by a specific user (UUID)"""
+        statement = select(Deal).where(Deal.user_id == user_id).offset(offset).limit(limit)
+        return list(self.session.exec(statement).all())
+    
+    def get_by_deal_type(self, deal_type: str, offset: int = 0, limit: int = 100) -> List[Deal]:
+        """Get deals filtered by deal type"""
+        statement = select(Deal).where(Deal.deal_type == deal_type).offset(offset).limit(limit)
+        return list(self.session.exec(statement).all())

@@ -2,6 +2,7 @@
 Tenant Model
 """
 
+import uuid
 from typing import Optional
 from datetime import datetime, date
 from decimal import Decimal
@@ -12,9 +13,13 @@ class Tenant(SQLModel, table=True):
     """Tenant database model"""
     __tablename__ = "tenants"
     
-    id: Optional[int] = Field(default=None, primary_key=True)
-    deal_id: int = Field(index=True)
-    asset_id: int = Field(index=True)
+    id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()), 
+        primary_key=True,
+        description="UUID primary key"
+    )
+    deal_id: str = Field(index=True)  # FK → deals.id (UUID)
+    asset_id: str = Field(index=True)  # FK → assets.id (UUID)
     name: str
     unit_number: Optional[str] = None
     lease_start: Optional[date] = None

@@ -2,6 +2,7 @@
 Asset Model
 """
 
+import uuid
 from typing import Optional
 from datetime import datetime
 from decimal import Decimal
@@ -13,8 +14,12 @@ class Asset(SQLModel, table=True):
     """Real estate asset database model"""
     __tablename__ = "assets"
     
-    id: Optional[int] = Field(default=None, primary_key=True)
-    deal_id: int = Field(index=True)
+    id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()), 
+        primary_key=True,
+        description="UUID primary key"
+    )
+    deal_id: str = Field(index=True)  # FK → deals.id (UUID)
     
     # Basic info
     name: str

@@ -31,7 +31,7 @@ class UserRepository(BaseRepository[User]):
         statement = select(User).where(User.is_active == True).offset(offset).limit(limit)
         return list(self.session.exec(statement).all())
     
-    def email_exists(self, email: str, exclude_id: Optional[int] = None) -> bool:
+    def email_exists(self, email: str, exclude_id: Optional[str] = None) -> bool:
         """Check if email already exists"""
         statement = select(User).where(User.email == email)
         if exclude_id:

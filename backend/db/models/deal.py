@@ -2,6 +2,7 @@
 Deal Model
 """
 
+import uuid
 from typing import Optional
 from datetime import datetime, date
 from decimal import Decimal
@@ -12,12 +13,16 @@ class Deal(SQLModel, table=True):
     """Deal/Project database model"""
     __tablename__ = "deals"
     
-    id: Optional[int] = Field(default=None, primary_key=True)
+    id: str = Field(
+        default_factory=lambda: str(uuid.uuid4()), 
+        primary_key=True,
+        description="UUID primary key"
+    )
     name: str = Field(index=True)
     
     # Client & Ownership
     client_name: Optional[str] = None
-    user_id: Optional[int] = Field(default=None, index=True)  # FK → users (owner)
+    user_id: Optional[str] = Field(default=None, index=True)  # FK → users.id (UUID)
     
     # Deal classification
     deal_type: str = Field(default="Acquisition")  # Acquisition, Disposition, Refinance
